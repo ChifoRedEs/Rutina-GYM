@@ -108,12 +108,13 @@ function calendar(){
     <div class="days">${cells}</div>
     <div class="legend"><span><i style="background:${esc(GROUPS.empuje?.color||'#ffb020')}"></i>Empuje</span><span><i style="background:${esc(GROUPS.traccion?.color||'#4da6ff')}"></i>Tracción</span><span><i style="background:${esc(GROUPS.pierna?.color||'#3ed17a')}"></i>Pierna</span><span><i style="background:${esc(GROUPS.core?.color||'#a78bfa')}"></i>Core</span></div>
     <div class="home-actions"><button class="btn" id="todayBtn">Hoy</button><button class="btn" id="newTodayBtn">+ Entrenar hoy</button></div>
-    <div class="card" style="margin-top:12px"><div class="row"><div><h3>Últimos entrenamientos</h3><p class="small muted">Tus sesiones aparecen en el calendario.</p></div><button class="btn" id="viewHistory">Ver historial</button></div></div>`;
+    <div class="card" style="margin-top:12px"><div class="row"><div><h3>Últimos entrenamientos</h3><p class="small muted">Tus sesiones aparecen en el calendario.</p></div><button class="btn" id="viewHistory">Ver historial</button></div>${sessions()[0]?`<div class="row repeat-row"><div><b>${esc(sessions()[0].name)}</b><div class="small muted">${esc(formatDateLong(sessions()[0].date))}</div></div><button class="btn primary" id="repeatLatest">Repetir</button></div>`:'<p class="small muted">Cuando completes una sesión, podrás repetirla desde aquí.</p>'}</div>`;
   $('#prevMonth').onclick=()=>{viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--}calendar()};
   $('#nextMonth').onclick=()=>{viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++}calendar()};
   $('#todayBtn').onclick=()=>{viewYear=today.getFullYear();viewMonth=today.getMonth();calendar()};
   $('#newTodayBtn').onclick=()=>openDay(todayStr);
   $('#viewHistory').onclick=()=>navigate('history');
+  $('#repeatLatest')?.addEventListener('click',repeatLatestSession);
   document.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>openDay(b.dataset.date));
 }
 function getSessionsForMonth(y,m){const p=`${y}-${pad(m+1)}`;return sessions().filter(s=>String(s.date).startsWith(p))}
@@ -145,8 +146,16 @@ function selection({date,group,editingId=null}){
   $('#selCancel').onclick=()=>editingId?navigate('workout',{date,id:editingId}):navigate('home');
   $('#selSave').onclick=saveSelection;
 }
-function makeSet(n,p={}){return{id:p.id||uid('set'),number:n,weight:p.weight??'',reps:p.reps??'',rir:p.rir??'',completed:Boolean(p.completed)}}
-function makeExercise(def,previous){const ps=previous?.sets||[];return{id:def.id,name:def.name,primary:def.primary,secondary:def.secondary,subgroup:def.subgroup,equip:def.equip,restSeconds:def.restSeconds??90,notes:previous?.notes||'',sets:ps.length?ps.map((x,i)=>makeSet(i+1,x)):[1,2,3].map(n=>makeSet(n))}}
+function makeSet(n,p={}){return{id:uid('set'),number:n,weight:p.weight??'',reps:p.reps??'',rir:p.rir??'',completed:Boolean(p.completed)}}
+function makeExercise(def,previous){const ps=previous?.sets||[];return{id:def.id,name:def.name,primary:def.primary,secondary:def.secondary,subgroup:def.subgroup,equip:def.equip,restSeconds:def.restSeconds??90,notes:previous?.notes||'',sets:ps.length?ps.map((x,i)=>({...makeSet(i+1,x),id:x.id||uid('set'),completed:Boolean(x.completed)})):[1,2,3].map(n=>makeSet(n))}}
+function repeatLatestSession(){
+  const last=sessions()[0];if(!last){toast('Todavía no hay una sesión que repetir.');return}
+  const date=todayStr;
+  const existing=getSessionsForDate(date).find(x=>x.group===last.group&&x.status==='active');
+  if(existing&&!confirm(`Ya tienes una sesión de ${GROUPS[last.group]?.label||last.group} hoy. ¿Crear otra de todas formas?`))return;
+  const copy={...last,id:uid('session'),date,name:`${last.name.replace(/^Repetición de /,'')} · repetición`,createdAt:Date.now(),updatedAt:Date.now(),status:'active',notes:'',exercises:last.exercises.map(e=>({...e,notes:'',sets:(e.sets||[]).map((x,i)=>makeSet(i+1,{weight:x.weight,reps:x.reps,rir:x.rir,completed:false}))}))};
+  saveSession(copy);toast('Sesión copiada. Revisa los pesos y objetivos.');navigate('workout',{date:copy.date,id:copy.id});
+}
 function saveSelection(){
   const st=selectionState;if(!st||st.selected.size===0){toast('Selecciona al menos un ejercicio.');return}
   const defs=exerciseList().filter(x=>x.group===st.group&&st.selected.has(x.id));const old=st.editingId?getSession(st.date,st.editingId):null;
@@ -159,25 +168,53 @@ function saveSelection(){
 async function workout({date,id}){
   const s=getSession(date,id);if(!s){toast('No se encontró el entrenamiento.');return navigate('home')}
   currentSessionId=id;setHeader(s.name,formatDateLong(s.date),true);
-  $('#screen').innerHTML=`<div class="card"><div class="row"><b>Progreso</b><span id="progressText">${completedSets(s)}/${totalSets(s)} series</span></div><div class="progress"><div id="progressFill" style="width:${progress(s)}%"></div></div></div><div id="exerciseList"></div><div class="sticky-actions"><button class="btn" id="editSelection">Editar ejercicios</button><button class="btn primary" id="finishWorkout">Finalizar</button></div><div id="restHolder"></div>`;
+  $('#screen').innerHTML=`<div class="card"><div class="row"><b>Progreso</b><span id="progressText">${completedSets(s)}/${totalSets(s)} series</span></div><div class="progress"><div id="progressFill" style="width:${progress(s)}%"></div></div><p class="small muted" style="margin-bottom:0">Volumen completado: <b id="workoutVolume">${Math.round(volume(s))} kg</b></p></div><div id="exerciseList"></div><div class="sticky-actions"><button class="btn" id="editSelection">Editar ejercicios</button><button class="btn primary" id="finishWorkout">Finalizar</button></div><div id="restHolder"></div>`;
   $('#editSelection').onclick=()=>navigate('selection',{date:s.date,group:s.group,editingId:s.id});
-  $('#finishWorkout').onclick=()=>{s.status='completed';saveSession(s);toast('Entrenamiento guardado');navigate('home')};
+  $('#finishWorkout').onclick=()=>{stopRest();s.status='completed';saveSession(s);toast('Entrenamiento guardado');navigate('home')};
   const list=$('#exerciseList');
-  for(const e of s.exercises){
-    const def=exerciseById(e.id)||e,media=await mediaGet(e.id),image=imageSrc(media?.dataUrl||def.imagePath||'');
-    const p=previousPerformance(e.id,s.date),card=document.createElement('article');card.className='card exercise';card.style.setProperty('--exercise-color',GROUPS[s.group]?.color||'#7c5cff');
-    card.innerHTML=`<div class="row"><div><h3>${esc(e.name)}</h3><div class="tags"><span class="tag">${esc(e.primary)}</span>${e.secondary?`<span class="tag">${esc(e.secondary)}</span>`:''}</div></div><button class="btn" data-rest>Descanso</button></div>
-      ${image?`<img class="workout-image" src="${esc(image)}" alt="${esc(e.name)}">`:''}
-      ${def.instructions?`<p class="small exercise-instructions">${esc(def.instructions)}</p>`:''}
-      <div class="exercise-actions">${safeUrl(def.tutorialUrl)?`<a class="btn" href="${esc(safeUrl(def.tutorialUrl))}" target="_blank" rel="noopener">▶ Tutorial</a>`:''}${safeUrl(def.externalUrl)?`<a class="btn" href="${esc(safeUrl(def.externalUrl))}" target="_blank" rel="noopener">↗ Más información</a>`:''}<span class="target small">Objetivo: ${Number(def.targetRepsMin)||8}–${Number(def.targetRepsMax)||12} reps · RIR ${Number(def.targetRIR)??1}</span></div>
-      <p class="small muted">${p?'Anterior: '+p.sets.filter(x=>x.completed).map(x=>`${x.weight||0} kg × ${x.reps||0}`).join(' · '):'Sin historial previo'}</p>
-      <div class="sets">${e.sets.map((x,i)=>`<div class="set-row" data-set="${esc(x.id)}"><span class="set-num">${i+1}</span><input data-f="weight" type="number" inputmode="decimal" value="${esc(x.weight)}" placeholder="kg"><input data-f="reps" type="number" inputmode="numeric" value="${esc(x.reps)}" placeholder="reps"><input data-f="rir" type="number" inputmode="numeric" value="${esc(x.rir)}" placeholder="RIR"><button class="check ${x.completed?'checked':''}" data-check>${x.completed?'✓':'○'}</button></div>`).join('')}</div>
-      <label style="margin-top:10px">Notas<input data-note value="${esc(e.notes)}" placeholder="Notas del ejercicio"></label>`;
-    list.append(card);
-    card.querySelectorAll('.set-row').forEach(row=>{row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const x=e.sets.find(z=>z.id===row.dataset.set);if(x){x[input.dataset.f]=input.value;saveSession(s);updateProgress(s)}}));row.querySelector('[data-check]').onclick=()=>{const x=e.sets.find(z=>z.id===row.dataset.set);if(!x)return;x.completed=!x.completed;saveSession(s);updateProgress(s);const b=row.querySelector('[data-check]');b.classList.toggle('checked',x.completed);b.textContent=x.completed?'✓':'○';if(x.completed)startRest(e.restSeconds||def.restSeconds||90,e.name)}});
-    card.querySelector('[data-note]').oninput=ev=>{e.notes=ev.target.value;saveSession(s)};card.querySelector('[data-rest]').onclick=()=>startRest(e.restSeconds||def.restSeconds||90,e.name);
-  }
+  for(const e of s.exercises) await renderWorkoutExercise(s,e,list);
 }
+function progressionAdvice(e,def){
+  const done=(e.sets||[]).filter(x=>x.completed&&Number(x.reps)>0);if(!done.length)return 'Completa alguna serie para recibir una sugerencia de progresión.';
+  const min=Math.max(1,Number(def.targetRepsMin)||8),max=Math.max(min,Number(def.targetRepsMax)||12),targetRIR=Math.max(0,Number(def.targetRIR??1));
+  const allAtTop=done.length>=Math.min(2,e.sets.length)&&done.every(x=>Number(x.reps)>=max&&(x.rir===''||Number(x.rir)>=targetRIR));
+  const weights=done.map(x=>Number(x.weight)||0),maxWeight=Math.max(0,...weights),allWeights=weights.every(x=>x>0);
+  if(allAtTop){
+    if(allWeights){const increment=maxWeight>=100?5:(maxWeight>=40?2.5:1.25);return `Progresión sugerida: prueba ${formatNum(maxWeight+increment)} kg (+${formatNum(increment)} kg) y vuelve al rango de ${min}–${max} repeticiones, manteniendo la técnica.`}
+    return `Progresión sugerida: añade 1 repetición por serie o utiliza una variante ligeramente más difícil.`
+  }
+  const below=done.some(x=>Number(x.reps)<min);
+  if(below)return `Mantén la carga actual o bájala ligeramente hasta poder trabajar dentro de ${min}–${max} repeticiones con buena técnica.`;
+  return `Mantén la carga e intenta sumar 1 repetición en alguna serie, sin bajar del RIR objetivo (${targetRIR}).`;
+}
+function formatNum(n){return Number(n.toFixed(2)).toLocaleString('es-ES',{maximumFractionDigits:2})}
+async function renderWorkoutExercise(s,e,list){
+  const def=exerciseById(e.id)||e,media=await mediaGet(e.id),image=imageSrc(media?.dataUrl||def.imagePath||'');
+  const p=previousPerformance(e.id,s.date),card=document.createElement('article');card.className='card exercise';card.style.setProperty('--exercise-color',GROUPS[s.group]?.color||'#7c5cff');card.dataset.exerciseId=e.id;
+  const tutorial=safeUrl(def.tutorialUrl),external=safeUrl(def.externalUrl);
+  card.innerHTML=`<div class="row"><div><h3>${esc(e.name)}</h3><div class="tags"><span class="tag">${esc(e.primary)}</span>${e.secondary?`<span class="tag">${esc(e.secondary)}</span>`:''}</div></div><button class="btn" data-rest>Descanso</button></div>
+    ${image?`<img class="workout-image" src="${esc(image)}" alt="${esc(e.name)}">`:'<div class="exercise-image-placeholder">Añade una foto desde Ajustes</div>'}
+    ${def.instructions?`<p class="small exercise-instructions">${esc(def.instructions)}</p>`:''}
+    <div class="exercise-actions">${tutorial?`<a class="btn" href="${esc(tutorial)}" target="_blank" rel="noopener noreferrer">▶ Tutorial</a>`:''}${external?`<a class="btn" href="${esc(external)}" target="_blank" rel="noopener noreferrer">↗ Más información</a>`:''}<span class="target small">Objetivo: ${Number(def.targetRepsMin)||8}–${Number(def.targetRepsMax)||12} reps · RIR ${Number(def.targetRIR??1)}</span></div>
+    <div class="previous-performance"><p class="small muted">${p?'Última sesión: '+p.sets.filter(x=>x.completed).map(x=>`${esc(x.weight||0)} kg × ${esc(x.reps||0)}${x.rir!==''?' · RIR '+esc(x.rir):''}`).join(' · '):'Sin historial previo'}</p><button class="btn small" data-history>Ver evolución</button></div>
+    <div class="set-table-head"><span>Serie</span><span>Kg</span><span>Reps</span><span>RIR</span><span>Hecha</span></div>
+    <div class="sets">${e.sets.map((x,i)=>setRowHTML(x,i)).join('')}</div>
+    <div class="set-actions"><button class="btn" data-add-set>+ Añadir serie</button><button class="btn" data-remove-set ${e.sets.length<=1?'disabled':''}>− Quitar última</button></div>
+    <div class="progression-advice"><b>Siguiente objetivo</b><p class="small">${esc(progressionAdvice(e,def))}</p></div>
+    <label style="margin-top:10px">Notas<input data-note value="${esc(e.notes)}" placeholder="Notas del ejercicio"></label>`;
+  list.append(card);
+  const update=()=>{saveSession(s);updateProgress(s);const vol=$('#workoutVolume');if(vol)vol.textContent=`${Math.round(volume(s))} kg`;const a=card.querySelector('.progression-advice p');if(a)a.textContent=progressionAdvice(e,def)};
+  card.querySelectorAll('.set-row').forEach(row=>bindSetRow(row,s,e,update));
+  card.querySelector('[data-note]').oninput=ev=>{e.notes=ev.target.value;saveSession(s)};
+  card.querySelector('[data-rest]').onclick=()=>startRest(e.restSeconds||def.restSeconds||90,e.name);
+  card.querySelector('[data-add-set]').onclick=async()=>{e.sets.push(makeSet(e.sets.length+1));saveSession(s);await rerenderCard(s,e,card)};
+  card.querySelector('[data-remove-set]').onclick=async()=>{if(e.sets.length<=1)return;if(!confirm('¿Quitar la última serie?'))return;e.sets.pop();e.sets.forEach((x,i)=>x.number=i+1);saveSession(s);await rerenderCard(s,e,card)};
+  card.querySelector('[data-history]').onclick=()=>showExerciseHistory(e.id,s.date);
+}
+function setRowHTML(x,i){return `<div class="set-row" data-set="${esc(x.id)}"><span class="set-num">${i+1}</span><input aria-label="Peso serie ${i+1}" data-f="weight" type="number" inputmode="decimal" step="0.25" value="${esc(x.weight)}" placeholder="kg"><input aria-label="Repeticiones serie ${i+1}" data-f="reps" type="number" inputmode="numeric" min="0" value="${esc(x.reps)}" placeholder="reps"><input aria-label="RIR serie ${i+1}" data-f="rir" type="number" inputmode="numeric" min="0" max="10" value="${esc(x.rir)}" placeholder="RIR"><button class="check ${x.completed?'checked':''}" data-check aria-label="Marcar serie ${i+1} como completada">${x.completed?'✓':'○'}</button></div>`}
+function bindSetRow(row,s,e,update){row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const x=e.sets.find(z=>z.id===row.dataset.set);if(x){x[input.dataset.f]=input.value;update()}}));row.querySelector('[data-check]').onclick=()=>{const x=e.sets.find(z=>z.id===row.dataset.set);if(!x)return;x.completed=!x.completed;const b=row.querySelector('[data-check]');b.classList.toggle('checked',x.completed);b.textContent=x.completed?'✓':'○';saveSession(s);update();if(x.completed)startRest(e.restSeconds||90,e.name)}}
+async function rerenderCard(s,e,card){const list=card.parentElement;const next=card.nextSibling;card.remove();await renderWorkoutExercise(s,e,list);const created=list.querySelector(`[data-exercise-id="${CSS.escape(e.id)}"]`);if(created&&next)list.insertBefore(created,next);}
+function showExerciseHistory(exId,currentDate){stopRest();const past=sessions().filter(s=>s.date<=currentDate&&s.exercises.some(e=>e.id===exId)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0)).slice(0,10);const rows=past.map(s=>{const e=s.exercises.find(x=>x.id===exId);const done=e.sets.filter(x=>x.completed);const top=done.reduce((m,x)=>Math.max(m,Number(x.weight)||0),0);return `<div class="list-item"><b>${esc(formatDateLong(s.date))}</b><div class="small muted">${done.length}/${e.sets.length} series completadas · Volumen ${Math.round(done.reduce((n,x)=>n+(Number(x.weight)||0)*(Number(x.reps)||0),0))} kg</div><p class="small">${done.map(x=>`${esc(x.weight||0)} kg × ${esc(x.reps||0)} reps${x.rir!==''?' · RIR '+esc(x.rir):''}`).join(' · ')||'Sin series completadas'}</p>${top?`<span class="tag">Mayor peso: ${formatNum(top)} kg</span>`:''}</div>`}).join('')||'<p class="muted">Todavía no hay sesiones de este ejercicio.</p>';$('#modalRoot').innerHTML=`<div class="modal-backdrop" id="exerciseHistoryModal"><div class="sheet"><div class="row"><h2>Evolución · ${esc(exerciseById(exId)?.name||exId)}</h2><button class="btn" id="closeExerciseHistory">Cerrar</button></div>${rows}</div></div>`;$('#closeExerciseHistory').onclick=closeModal;$('#exerciseHistoryModal').onclick=e=>{if(e.target.id==='exerciseHistoryModal')closeModal()}}
 function completedSets(s){return s.exercises.reduce((n,e)=>n+e.sets.filter(x=>x.completed).length,0)}
 function totalSets(s){return s.exercises.reduce((n,e)=>n+e.sets.length,0)}
 function volume(s){return s.exercises.reduce((n,e)=>n+e.sets.filter(x=>x.completed).reduce((a,x)=>a+Number(x.weight||0)*Number(x.reps||0),0),0)}
@@ -198,7 +235,7 @@ async function editExercise(id){const existing=id?exerciseById(id):{id:uid('cust
 function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(file)})}
 
 // ---------- backup ----------
-async function exportBackup(){const media=await mediaAll();const payload={app:'Rutina Gym',version:'2.4',exportedAt:new Date().toISOString(),sessions:sessions(),customExercises:customExercises(),overrides:overrides(),media};download(JSON.stringify(payload,null,2),`rutina-gym-backup-${todayStr}.json`);toast('Copia exportada')}
+async function exportBackup(){const media=await mediaAll();const payload={app:'Rutina Gym',version:'2.5',exportedAt:new Date().toISOString(),sessions:sessions(),customExercises:customExercises(),overrides:overrides(),media};download(JSON.stringify(payload,null,2),`rutina-gym-backup-${todayStr}.json`);toast('Copia exportada')}
 function exportCSV(){const rows=[['Fecha','Sesión','Grupo','Ejercicio','Serie','Peso kg','Reps','RIR','Volumen kg']];sessions().forEach(s=>s.exercises.forEach(e=>e.sets.forEach(x=>{if(x.completed)rows.push([s.date,s.name,s.group,e.name,x.number,x.weight,x.reps,x.rir,Number(x.weight||0)*Number(x.reps||0)])})));download(rows.map(r=>r.map(x=>`"${String(x??'').replaceAll('"','""')}"`).join(',')).join('\n'),`rutina-gym-${todayStr}.csv`);toast('CSV exportado')}
 function download(text,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:name.endsWith('.csv')?'text/csv;charset=utf-8':'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function importBackup(file){try{const d=JSON.parse(await file.text());if(d.app!=='Rutina Gym')throw Error();if(!confirm('Se reemplazarán los datos actuales. ¿Continuar?'))return;allSessionKeys().forEach(remove);(d.sessions||[]).forEach(saveSession);saveCustom(d.customExercises||[]);saveOverrides(d.overrides||{});for(const m of d.media||[])if(m?.id&&m.dataUrl)await mediaPut(m.id,m.dataUrl);toast('Copia restaurada');navigate('home')}catch{toast('Copia no válida')}}

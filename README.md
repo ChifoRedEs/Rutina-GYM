@@ -1,8 +1,8 @@
-# Rutina Gym V2.4
+# Rutina Gym V2.5
 
 Aplicación web estática para gestionar entrenamientos desde móvil o PC.
 
-## Novedades V2.4
+## Novedades V2.5
 
 - Nuevo diseño claro, colorido y de bajo contraste agresivo para reducir fatiga visual.
 - Colores diferenciados para Empuje, Tracción, Pierna y Core.
@@ -48,3 +48,18 @@ Los entrenamientos y personalizaciones se almacenan localmente en el navegador. 
 ## Nota sobre ejercicios de suelo pélvico
 
 Los ejercicios de Kegel se incluyen como opciones de control y fortalecimiento suave. No se recomienda practicar Kegel interrumpiendo el flujo de orina. Si existe dolor, tensión persistente, síntomas pélvicos o dificultad para relajar el suelo pélvico, conviene consultar con un profesional sanitario.
+
+
+## Novedades V2.5
+
+- Repetir el último entrenamiento crea una sesión nueva para hoy y copia ejercicios, pesos, repeticiones y RIR sin marcar las series como completadas.
+- Registro de series con opción de añadir o quitar series; las series se guardan al editar sus valores.
+- Cada ejercicio muestra la última sesión conocida y una pantalla de evolución con hasta 10 sesiones anteriores.
+- Sugerencias de progresión basadas en el rango objetivo de repeticiones y el RIR configurado; son orientativas y no sustituyen la técnica ni la valoración personal.
+- Volumen completado visible durante el entrenamiento.
+- Se conserva el estado de las series al copiar una sesión, pero las series de la nueva sesión empiezan sin completar.
+- Service Worker actualizado a V2.5 para renovar la caché en el despliegue.
+
+## Validación
+
+El código se comprueba con análisis sintáctico JavaScript y pruebas de navegador automatizadas antes de publicar el ZIP.
