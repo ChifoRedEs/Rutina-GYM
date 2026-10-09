@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fb">
+<meta name="description" content="Rutina Gym — calendario, entrenamientos, historial y biblioteca de ejercicios.">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/app.css">
+<title>Rutina Gym</title>
+</head>
+<body>
+<div id="app">
+<header class="topbar">
+  <button id="backBtn" class="icon-btn hidden" aria-label="Volver">‹</button>
+  <div class="title-wrap"><h1 id="pageTitle">Rutina de Gimnasio</h1><p id="pageSubtitle">Elige un día para entrenar</p></div>
+</header>
+<main id="screen"></main>
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <button data-route="home">Inicio</button>
+  <button data-route="history">Historial</button>
+  <button data-route="stats">Progreso</button>
+  <button data-route="settings">Ajustes</button>
+</nav>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modalRoot"></div>
+<script src="data/exercises.js"></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>
