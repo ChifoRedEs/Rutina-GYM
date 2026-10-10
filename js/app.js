@@ -87,6 +87,7 @@ window.addEventListener('unhandledrejection', e => console.error(e.reason));
 (async function start() {
   applyTheme();
   migrateLegacy();
+  migrateCatalog();
   try { await mediaLoadAll(); } catch (e) { console.warn('Imágenes no disponibles', e); }
   if (!history.state) history.replaceState({ depth: 0 }, '', location.hash || '#/');
   render();

@@ -219,3 +219,21 @@ function migrateLegacy() {
 window.addEventListener('storage', e => {
   if (e.key === null || e.key.startsWith('gym.')) { resetSessionCache(); resetExerciseCache(); }
 });
+
+/* ---------- cambios del catálogo base ----------
+ * Si un ejercicio del catálogo cambia de grupo y el usuario había editado su ficha,
+ * la ficha editada conservaría el grupo antiguo. Aquí se le aplica el nuevo grupo y zona
+ * una sola vez, sin tocar imágenes, enlaces, notas ni objetivos. */
+function migrateCatalog() {
+  const target = Number(DATA.CATALOG_VERSION) || 1;
+  const current = Number(lsRead('gym.catalogVersion', 1)) || 1;
+  if (current >= target) return;
+  const ov = overrides(); let changed = false;
+  for (const [v, moves] of Object.entries(DATA.CATALOG_MOVES || {})) {
+    if (Number(v) <= current || Number(v) > target) continue;
+    for (const [id, fields] of Object.entries(moves)) if (ov[id]) { Object.assign(ov[id], fields); changed = true; }
+  }
+  if (changed) lsWrite(K.overrides, ov);
+  lsWrite('gym.catalogVersion', target);
+  resetExerciseCache();
+}
