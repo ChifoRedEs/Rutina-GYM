@@ -157,12 +157,72 @@ async function mediaLoadAll() {
   mediaLoaded = true;
 }
 function mediaImages(id) { return mediaCache.get(id)?.images || []; }
-/* Imagen principal de un ejercicio: la primera subida o, si no hay, la ruta del repositorio. */
+
+/* ---------- portadas del repositorio (assets/exercises/img/NN.webp) ----------
+ * data/covers.js asigna un número a cada ejercicio del catálogo. GitHub Pages no deja
+ * listar carpetas, así que al abrir la app se pregunta (HEAD, sin descargar la imagen)
+ * qué números existen. El resultado se guarda para que la siguiente apertura y el modo
+ * sin conexión los muestren al instante. Subir 16.webp al repositorio basta para que
+ * aparezca; borrarlo hace que deje de mostrarse. */
+const COVERS = DATA.COVERS || {};
+const COVER_DIR = DATA.COVER_DIR || 'assets/exercises/img/';
+const COVER_EXT = DATA.COVER_EXT || 'webp';
+const COVER_KEY = 'gym.coverIndex';
+const COVER_RECHECK_MS = 5 * 60 * 1000;
+let coverFound = new Set((lsRead(COVER_KEY, {})?.found || []).map(Number));
+let coverCheckedAt = 0, coverProbe = null;
+
+const coverNumber = def => (def && COVERS[def.id]) || null;
+const coverFile = n => `${COVER_DIR}${String(n).padStart(2, '0')}.${COVER_EXT}`;
+function coverPath(def) { const n = coverNumber(def); return n ? coverFile(n) : ''; }
+function coverExists(def) { const n = coverNumber(def); return Boolean(n && coverFound.has(n)); }
+
+/* Comprueba qué portadas hay en el repositorio. Devuelve true si algo ha cambiado. */
+function probeCovers({ force = false } = {}) {
+  if (coverProbe) return coverProbe;
+  if (!force && Date.now() - coverCheckedAt < COVER_RECHECK_MS) return Promise.resolve(false);
+  if (!('fetch' in window) || location.protocol === 'file:') return Promise.resolve(false);
+  const nums = [...new Set(Object.values(COVERS).map(Number).filter(n => n > 0))];
+  const next = new Set(coverFound);
+  let reached = false;
+  const check = async n => {
+    try {
+      const r = await fetch(coverFile(n), { method: 'HEAD', cache: 'no-store' });
+      reached = true;
+      if (r.ok) next.add(n); else if (r.status === 404) next.delete(n);
+    } catch { /* sin conexión: se conserva lo que ya se sabía */ }
+  };
+  coverProbe = (async () => {
+    const queue = nums.slice();
+    await Promise.all(Array.from({ length: 8 }, async () => { while (queue.length) await check(queue.shift()); }));
+    coverProbe = null;
+    if (!reached) return false;
+    coverCheckedAt = Date.now();
+    const changed = next.size !== coverFound.size || [...next].some(n => !coverFound.has(n));
+    coverFound = next;
+    lsWrite(COVER_KEY, { found: [...next].sort((a, b) => a - b), checkedAt: coverCheckedAt });
+    return changed;
+  })();
+  return coverProbe;
+}
+
+/* Imagen del repositorio: la ruta escrita a mano en la ficha o, si no hay, la portada numerada. */
+function repoImage(def) {
+  const manual = imageSrc(def?.imagePath || '');
+  if (manual) return { full: manual, thumb: manual, repo: true };
+  if (!coverExists(def)) return null;
+  const p = imageSrc(coverPath(def));
+  return p ? { full: p, thumb: p, repo: true, cover: true } : null;
+}
+/* Todas las imágenes de un ejercicio: la del repositorio (portada) y después las subidas. */
+function exerciseImages(def) {
+  const repo = repoImage(def);
+  return (repo ? [repo] : []).concat(mediaImages(def?.id));
+}
+/* Imagen principal: la portada del repositorio o, si no hay, la primera subida. */
 function mainImage(def) {
-  const imgs = mediaImages(def?.id);
-  if (imgs.length) return { full: imgs[0].full, thumb: imgs[0].thumb || imgs[0].full };
-  const p = imageSrc(def?.imagePath || '');
-  return p ? { full: p, thumb: p } : null;
+  const first = exerciseImages(def)[0];
+  return first ? { full: first.full, thumb: first.thumb || first.full } : null;
 }
 async function mediaSet(id, images) {
   const rec = { id, images, updatedAt: Date.now() };

@@ -301,7 +301,7 @@ function viewWorkout({ id }) {
 
 function exerciseCard(s, e, idx, { update, redraw }) {
   const def = exerciseById(e.id) || e;
-  const imgs = mediaImages(e.id), img = mainImage(def);
+  const imgs = exerciseImages(def), img = imgs[0] || null;
   const prev = lastPerformance(e.id, s);
   const sug = suggestion(def, prev?.exercise);
   const min = num(def.targetRepsMin) || 8, max = num(def.targetRepsMax) || 12, rir = num(def.targetRIR) ?? 1;
@@ -380,7 +380,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
   };
   $('[data-rest]', card).onclick = () => startRest(rest, e.name);
   $('[data-note]', card).oninput = ev => { e.notes = ev.target.value; scheduleSave(s); };
-  $('[data-gallery]', card)?.addEventListener('click', () => openGallery(imgs.length ? imgs : [img], 0, e.name));
+  $('[data-gallery]', card)?.addEventListener('click', () => openGallery(imgs, 0, e.name));
   $('[data-tutorial]', card)?.addEventListener('click', () => openTutorial(def));
   $('[data-exmenu]', card).onclick = async () => {
     const items = [];

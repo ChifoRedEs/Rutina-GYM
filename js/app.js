@@ -66,6 +66,15 @@ function applyTheme() {
   $('meta[name="theme-color"]')?.setAttribute('content', dark ? '#141824' : '#f5f7fb');
 }
 
+/* Comprueba en segundo plano qué portadas hay en assets/exercises/img/ y, si cambió algo,
+ * repinta las pantallas donde no se está escribiendo nada (nunca una sesión en curso ni el editor). */
+async function refreshCovers(opts) {
+  let changed = false;
+  try { changed = await probeCovers(opts); } catch { return; }
+  const [r, a] = currentParts();
+  if (changed && (['', 'history', 'stats', 'settings', 'day'].includes(r || '') || (r === 'library' && !a))) render();
+}
+
 /* ---------- eventos globales ---------- */
 window.addEventListener('popstate', render);
 $('#backBtn').addEventListener('click', goBack);
@@ -78,6 +87,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyThe
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { flushSaves(); return; }
   if (todayStr() !== lastDay) { lastDay = todayStr(); if (['', 'day'].includes(routeName())) render(); }
+  refreshCovers();
 });
 window.addEventListener('pagehide', flushSaves);
 window.addEventListener('error', e => console.error(e.error || e.message));
@@ -92,6 +102,7 @@ window.addEventListener('unhandledrejection', e => console.error(e.reason));
   if (!history.state) history.replaceState({ depth: 0 }, '', location.hash || '#/');
   render();
   if (restState()) runRest();
+  refreshCovers();
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     const hadController = Boolean(navigator.serviceWorker.controller);

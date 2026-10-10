@@ -160,7 +160,7 @@ function viewLibrary() {
     const q = libQuery.toLowerCase();
     const defs = sortDefs(exerciseList().filter(x => !x.archived && (libGroup === 'all' || x.group === libGroup) && (x.name + ' ' + x.primary).toLowerCase().includes(q)));
     $('#libList').innerHTML = defs.map(x => {
-      const img = mainImage(x), n = mediaImages(x.id).length;
+      const img = mainImage(x), n = exerciseImages(x).length;
       return `<button type="button" class="list-item lib-row" data-edit="${esc(x.id)}" style="--gc:${esc(groupColor(x.group))}">
         ${img ? `<img class="lib-thumb" src="${esc(img.thumb)}" alt="" loading="lazy">` : '<span class="lib-thumb empty-thumb" aria-hidden="true">+</span>'}
         <span class="lib-text"><b>${esc(x.name)}</b><span class="small muted">${esc(groupLabel(x.group))} · ${esc(x.subgroup || '')} · ${esc(EQUIP[x.equip] || '')}</span>
@@ -188,15 +188,16 @@ function viewEditor({ id }) {
 
   paint(`
     <div class="card"><h3>Imágenes</h3>
-      <p class="small muted">Se optimizan solas al subirlas: máximo 1080 px en el lado largo y miniatura de 240 px, en WebP. La primera es la principal.</p>
+      <p class="small muted">Se optimizan solas al subirlas: máximo 1080 px en el lado largo y miniatura de 240 px, en WebP. Si el ejercicio tiene portada en el repositorio, esa es la principal; si no, la primera subida.</p>
+      ${coverNumber(ex) ? `<p class="small muted cover-info">Portada del repositorio: <code>${esc(coverPath(ex))}</code> · ${coverExists(ex) ? 'encontrada' : 'aún no subida'}</p>` : ''}
       <div class="img-grid" id="imgGrid"></div>
       <div class="grid-2">
         <label class="file-btn btn">Añadir imágenes<input id="imgFiles" type="file" accept="image/*" multiple></label>
         <label class="file-btn btn">Hacer foto<input id="imgCamera" type="file" accept="image/*" capture="environment"></label>
       </div>
       <p class="small muted" id="imgStatus" aria-live="polite"></p>
-      <label>Ruta de imagen en el repositorio (opcional)<input id="exImagePath" value="${esc(ex.imagePath || '')}" placeholder="assets/exercises/press-banca.webp"></label>
-      <p class="small muted">Se usa solo si el ejercicio no tiene imágenes subidas. Útil para que la imagen viaje con el repositorio de GitHub.</p></div>
+      <label>Otra ruta de imagen en el repositorio (opcional)<input id="exImagePath" value="${esc(ex.imagePath || '')}" placeholder="${esc(coverPath(ex) || 'assets/exercises/press-banca.webp')}"></label>
+      <p class="small muted">${coverNumber(ex) ? 'Déjalo vacío para usar la portada numerada. Si escribes una ruta, sustituye a la portada.' : 'Se muestra como portada. Útil para que la imagen viaje con el repositorio de GitHub.'}</p></div>
 
     <div class="card"><h3>Tutorial y enlaces</h3>
       <label>Vídeo de YouTube<input id="exTutorial" type="url" inputmode="url" value="${esc(ex.tutorialUrl || '')}" placeholder="https://www.youtube.com/watch?v=…"></label>
@@ -222,13 +223,18 @@ function viewEditor({ id }) {
     ${hasOverride ? '<button type="button" class="btn full" id="restoreEx">Restaurar datos originales</button>' : ''}
     ${!isNew && !ex.builtin ? '<button type="button" class="btn danger full" id="deleteExercise">Eliminar ejercicio</button>' : ''}`);
 
+  const repo = isNew ? null : repoImage(ex);
   const drawImages = () => {
-    $('#imgGrid').innerHTML = images.map((im, i) => `<figure class="img-tile ${i === 0 ? 'main' : ''}">
-      <button type="button" class="img-open" data-view="${i}" aria-label="Ver imagen ${i + 1}"><img src="${esc(im.thumb || im.full)}" alt=""></button>
-      ${i === 0 ? '<span class="img-badge">Principal</span>' : `<button type="button" class="img-act left" data-main="${i}" aria-label="Hacer principal">★</button>`}
+    const off = repo ? 1 : 0, all = (repo ? [repo] : []).concat(images);
+    $('#imgGrid').innerHTML = (repo ? `<figure class="img-tile main">
+      <button type="button" class="img-open" data-view="0" aria-label="Ver portada"><img src="${esc(repo.thumb)}" alt=""></button>
+      <span class="img-badge">Portada</span>
+      <figcaption>Repositorio</figcaption></figure>` : '') + images.map((im, i) => `<figure class="img-tile ${i === 0 && !repo ? 'main' : ''}">
+      <button type="button" class="img-open" data-view="${i + off}" aria-label="Ver imagen ${i + 1}"><img src="${esc(im.thumb || im.full)}" alt=""></button>
+      ${i === 0 ? (repo ? '' : '<span class="img-badge">Principal</span>') : `<button type="button" class="img-act left" data-main="${i}" aria-label="Poner primera">★</button>`}
       <button type="button" class="img-act" data-del="${i}" aria-label="Eliminar imagen">✕</button>
       <figcaption>${im.w ? `${im.w}×${im.h}` : ''}${im.bytes ? ` · ${fmtBytes(im.bytes)}` : ''}</figcaption></figure>`).join('') || '<div class="img-empty">Sin imágenes todavía</div>';
-    $$('[data-view]').forEach(b => b.onclick = () => openGallery(images, Number(b.dataset.view), $('#exName').value || ex.name));
+    $$('[data-view]').forEach(b => b.onclick = () => openGallery(all, Number(b.dataset.view), $('#exName').value || ex.name));
     $$('[data-main]').forEach(b => b.onclick = () => { const [im] = images.splice(Number(b.dataset.main), 1); images.unshift(im); drawImages(); });
     $$('[data-del]').forEach(b => b.onclick = () => { images.splice(Number(b.dataset.del), 1); drawImages(); });
   };
