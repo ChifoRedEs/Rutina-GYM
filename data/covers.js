@@ -125,11 +125,5 @@ window.GYM_DATA.COVERS = {
   "core-kegel-rapido": 95, // 95 Kegel: contracciones rápidas
   "core-kegel-escalonado": 96, // 96 Kegel: contracción escalonada
   "core-respiracion-diafragmatica-pelvica": 97, // 97 Respiración diafragmática y relajación pélvica
-  "core-clamshell": 98, // 98 Clamshell
-  /* Duplicados archivados (solo aparecen en sesiones antiguas): usan la portada de su equivalente en Core */
-  "crunch-abdominal-en-m-quina": 74, // 74 Crunch abdominal en máquina
-  "encogimientos-crunch-en-polea-alta-con-cuerda": 73, // 73 Encogimientos / Crunch en polea alta con cuerda
-  "elevaciones-de-tronco-en-el-suelo-superman": 86, // 86 Elevaciones de tronco en el suelo / Superman
-  "elevaci-n-de-rodillas-colgado-o-en-silla-del-capit-n": 78, // 78 Elevación de rodillas colgado o en silla del capitán
-  "plancha-frontal-plank": 80 // 80 Plancha frontal / Plank
+  "core-clamshell": 98 // 98 Clamshell
 };
