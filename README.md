@@ -1,4 +1,4 @@
-# Rutina Gym 3.0
+# Rutina Gym 3.1
 
 Aplicación web para registrar entrenamientos de gimnasio desde el móvil o el ordenador. Funciona sin servidor, sin conexión y se puede instalar como app.
 
@@ -94,7 +94,7 @@ Si añades un archivo JS o CSS nuevo, inclúyelo también en la lista `ASSETS` d
 
 ### Ejercicios del catálogo
 
-No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar sesiones. Los cinco ejercicios de abdomen y lumbar que estaban duplicados entre Tracción y Core están marcados como `archived`: ya no se ofrecen al crear sesiones, pero el historial antiguo que los usa sigue funcionando. «Rotación de torso en máquina» y «Crunch con disco en banco declinado» pasan a Core.
+No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar sesiones. Si mueves un ejercicio de grupo, súbelo también a `CATALOG_MOVES` con un `CATALOG_VERSION` nuevo, para que las fichas que el usuario ya había editado se muevan igual. Los cinco ejercicios de abdomen y lumbar que estaban duplicados entre Tracción y Core están marcados como `archived`: ya no se ofrecen al crear sesiones, pero el historial antiguo que los usa sigue funcionando. «Rotación de torso en máquina» y «Crunch con disco en banco declinado» pasan a Core.
 
 ## Limitaciones conocidas
 
@@ -105,6 +105,19 @@ No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar se
 ## Nota sobre ejercicios de suelo pélvico
 
 Los ejercicios de Kegel se incluyen como opciones de control y fortalecimiento suave. No se recomienda practicarlos interrumpiendo el flujo de orina. Si hay dolor, tensión persistente, síntomas pélvicos o dificultad para relajar el suelo pélvico, conviene consultar con un profesional sanitario.
+
+## Novedades 3.1
+
+**Catálogo reorganizado**
+- Tracción queda para la espalda: Espalda (dorsales y espalda media), Trapecio, Deltoides posterior y Bíceps.
+- Nueva zona **Glúteo y cadena posterior** en Pierna con las bisagras de cadera: peso muerto convencional, peso muerto rumano, buenos días, hiperextensiones a 45° y puente de glúteo. Femoral queda para los curls.
+- Extensión lumbar en máquina sentada pasa a Core / Lumbar.
+- Pájaros en máquina pasa de Empuje a Tracción / Deltoides posterior.
+- 17 ejercicios nuevos de tracción, todos con instrucciones de técnica:
+  - Espalda: jalón agarre neutro, jalón unilateral, remo unilateral en máquina, remo Pendlay, remo en T, remo en banco inclinado, pullover con mancuerna, dominadas agarre neutro, remo invertido.
+  - Trapecio: encogimientos en máquina, con mancuernas y con barra; elevaciones en Y.
+  - Deltoides posterior: face pull, cruces invertidos en polea, pájaros con mancuernas, aperturas con banda.
+- Las sesiones antiguas no cambian: una sesión de Tracción con peso muerto sigue apareciendo igual en el historial y en el progreso.
 
 ## Novedades 3.0
 
