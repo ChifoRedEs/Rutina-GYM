@@ -1,1 +1,0 @@
-export const state={route:"home",previousRoute:"home",currentSession:null,currentExerciseId:null,timer:{remaining:0,running:false,interval:null,exerciseName:""},deferredInstall:null};
