@@ -1,4 +1,4 @@
-# Rutina Gym 3.1
+# Rutina Gym 3.2
 
 Aplicación web para registrar entrenamientos de gimnasio desde el móvil o el ordenador. Funciona sin servidor, sin conexión y se puede instalar como app.
 
@@ -65,13 +65,28 @@ Al subir una imagen se redimensiona automáticamente al tamaño mínimo necesari
 
 Se guardan en WebP (JPEG si el navegador no lo admite). Una foto de 12 MP de varios MB queda normalmente por debajo de 200 KB. Nunca se amplía una imagen pequeña. Máximo 8 imágenes por ejercicio.
 
-También puedes poner una imagen en `assets/exercises/` y escribir su ruta en la ficha (por ejemplo `assets/exercises/press-banca.webp`). Se usa si el ejercicio no tiene imágenes subidas y viaja con el repositorio.
+### Portadas numeradas
+
+Cada ejercicio del catálogo tiene un número (01–98) en `data/covers.js`, el mismo que en la lista de ejercicios. Para ponerle portada basta con subir la imagen a:
+
+```text
+assets/exercises/img/NN.webp     (01.webp, 02.webp … 98.webp)
+```
+
+No hay que tocar ningún archivo más. Al abrirse, la app comprueba qué números existen en esa carpeta y los muestra como portada en la biblioteca, al elegir ejercicios y en la sesión; los que todavía no existen no se muestran (nunca sale una imagen rota). El resultado se recuerda, así que también se ven sin conexión. Si la app está abierta, vuelve a comprobarlo al volver a ella pasados 5 minutos.
+
+- El nombre distingue mayúsculas: `05.webp`, no `05.WEBP` ni `5.webp`.
+- Para cambiar una portada, sube otra con el mismo nombre. GitHub Pages puede tardar unos minutos en servir la nueva.
+- La portada va siempre primero; las imágenes subidas desde la ficha se muestran después en la galería.
+- Si escribes una ruta en «Otra ruta de imagen en el repositorio» de la ficha, sustituye a la portada numerada de ese ejercicio.
+- Las consultas a los números que aún no existen aparecen como 404 en la consola del navegador: es normal.
 
 ## Estructura del código
 
 | Archivo | Contenido |
 |---|---|
 | `data/exercises.js` | Catálogo base de ejercicios y grupos |
+| `data/covers.js` | Número de portada de cada ejercicio (`assets/exercises/img/NN.webp`) |
 | `js/util.js` | Utilidades, fechas, avisos y diálogos |
 | `js/store.js` | Almacenamiento (localStorage + IndexedDB para imágenes) |
 | `js/images.js` | Redimensionado de imágenes |
@@ -105,6 +120,10 @@ No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar se
 ## Nota sobre ejercicios de suelo pélvico
 
 Los ejercicios de Kegel se incluyen como opciones de control y fortalecimiento suave. No se recomienda practicarlos interrumpiendo el flujo de orina. Si hay dolor, tensión persistente, síntomas pélvicos o dificultad para relajar el suelo pélvico, conviene consultar con un profesional sanitario.
+
+## Novedades 3.2
+
+- Portadas automáticas: sube `assets/exercises/img/NN.webp` y aparece como portada del ejercicio número NN, sin tocar código.
 
 ## Novedades 3.1
 
