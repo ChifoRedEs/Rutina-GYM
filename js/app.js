@@ -103,6 +103,9 @@ window.addEventListener('unhandledrejection', e => console.error(e.reason));
   render();
   if (restState()) runRest();
   refreshCovers();
+  // GitHub Pages no permite listar la carpeta; reconsulta los nombres conocidos
+  // periódicamente. probeCovers limita las comprobaciones a una vez cada 5 minutos.
+  window.setInterval(() => refreshCovers(), 60 * 1000);
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     const hadController = Boolean(navigator.serviceWorker.controller);
