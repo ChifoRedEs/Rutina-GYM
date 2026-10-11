@@ -121,7 +121,7 @@ function viewHome(openDate) {
   $('#viewHistory')?.addEventListener('click', () => go('history'));
   $('#doBackup')?.addEventListener('click', async () => { await exportBackup(); toast('Copia descargada'); viewHome(); });
   $('#snoozeBackup')?.addEventListener('click', () => { setSetting('backupSnoozeUntil', Date.now() + 3 * 86400000); viewHome(); });
-  $$('[data-date]').forEach(b => b.onclick = () => go(`day/${b.dataset.date}`));
+  $$('[data-date]', $('#screen')).forEach(b => b.onclick = () => go(`day/${b.dataset.date}`));
   bindSessionItems($('#screen'));
   if (openDate) openDaySheet(openDate);
 }
@@ -213,7 +213,7 @@ function viewSelect({ date, group, editId }) {
       draw();
     });
   };
-  $$('[data-view]').forEach(b => b.onclick = () => { st.view = b.dataset.view; st.q = ''; $('#selSearch').value = ''; $$('[data-view]').forEach(c => c.classList.toggle('on', c === b)); draw(); });
+  $$('[data-view]', $('#screen')).forEach(b => b.onclick = () => { st.view = b.dataset.view; st.q = ''; $('#selSearch').value = ''; $$('[data-view]', $('#screen')).forEach(c => c.classList.toggle('on', c === b)); draw(); });
   $('#selSearch').oninput = e => { st.q = e.target.value.trim(); draw(); };
   $('#selCancel').onclick = () => goBack();
   $('#selSave').onclick = async () => {
@@ -413,6 +413,6 @@ function viewHistory() {
   }
   paint(`<div class="chips scroll"><button type="button" class="chip ${historyFilter === 'all' ? 'on' : ''}" data-f="all">Todos</button>${Object.entries(GROUPS).map(([k, g]) => `<button type="button" class="chip ${historyFilter === k ? 'on' : ''}" data-f="${k}" style="--gc:${esc(g.color)}">${esc(g.label)}</button>`).join('')}</div>
     <div class="list">${html || '<div class="empty">No hay entrenamientos todavía. Empieza uno desde el calendario.</div>'}</div>`);
-  $$('[data-f]').forEach(b => b.onclick = () => { historyFilter = b.dataset.f; viewHistory(); });
+  $$('[data-f]', $('#screen')).forEach(b => b.onclick = () => { historyFilter = b.dataset.f; viewHistory(); });
   bindSessionItems($('#screen'));
 }

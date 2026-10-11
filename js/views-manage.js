@@ -71,8 +71,8 @@ function viewExerciseStats({ id }) {
       <div class="kpi"><b>${esc(formatDateShort(h[h.length - 1].date))}</b><span>última vez</span></div></div>
     <div class="card"><h3>Últimas sesiones</h3><div class="table">${[...h].reverse().slice(0, 12).map(x => `<button type="button" class="trow" data-open="${esc(x.sessionId)}"><span>${esc(formatDateShort(x.date))}</span><span>${x.sets.map(z => `${fmtNum(num(z.weight) || 0)}×${esc(z.reps)}`).join(' · ')}</span><b>${x.e1rm ? fmtNum(round(x.e1rm)) + ' kg' : ''}</b></button>`).join('')}</div></div>` : ''}
     ${exerciseById(id) ? '<button type="button" class="btn full" id="editEx">Editar ficha del ejercicio</button>' : ''}`);
-  $$('[data-m]').forEach(b => b.onclick = () => { statsMetric = b.dataset.m; viewExerciseStats({ id }); });
-  $$('[data-open]').forEach(b => b.onclick = () => go(`workout/${b.dataset.open}`));
+  $$('[data-m]', $('#screen')).forEach(b => b.onclick = () => { statsMetric = b.dataset.m; viewExerciseStats({ id }); });
+  $$('[data-open]', $('#screen')).forEach(b => b.onclick = () => go(`workout/${b.dataset.open}`));
   $('#editEx')?.addEventListener('click', () => go(`library/${encodeURIComponent(id)}`));
 }
 
@@ -86,7 +86,7 @@ function viewSettings() {
 
     <div class="card"><h3>Apariencia</h3>
       <p class="small muted">Elige el modo general y personaliza los colores de las pantallas. Los cambios se guardan en este dispositivo.</p>
-      <div class="segmented" role="radiogroup" aria-label="Tema">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${c.theme === k}" class="${c.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div>
+      <div class="segmented" role="radiogroup" aria-label="Tema">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${c.theme === k}" class="${c.theme === k ? 'on' : ''}" data-theme-mode="${k}">${l}</button>`).join('')}</div>
       <div class="theme-color-grid">
         <label class="theme-color-option"><span><b>Fondo general</b><span class="small muted">Detrás de las tarjetas y secciones</span></span><input type="color" data-theme-color="bg" value="${esc((c.themeColors || {}).bg || (c.theme === 'dark' ? '#141824' : '#f5f7fb'))}" aria-label="Color del fondo general"></label>
         <label class="theme-color-option"><span><b>Fondo de tarjetas</b><span class="small muted">Ventanas, bloques y paneles</span></span><input type="color" data-theme-color="surface" value="${esc((c.themeColors || {}).surface || (c.theme === 'dark' ? '#1c2130' : '#ffffff'))}" aria-label="Color de las tarjetas"></label>
@@ -118,13 +118,14 @@ function viewSettings() {
     <p class="small muted center">Rutina Gym ${APP_VERSION}</p>`);
 
   $('#manageExercises').onclick = () => go('library');
-  $$('[data-theme]').forEach(b => b.onclick = () => { setSetting('theme', b.dataset.theme); applyTheme(); viewSettings(); });
-  $$('[data-theme-color]').forEach(i => i.oninput = () => {
+  const scr = $('#screen');
+  $$('[data-theme-mode]', scr).forEach(b => b.onclick = () => { setSetting('theme', b.dataset.themeMode); applyTheme(); viewSettings(); });
+  $$('[data-theme-color]', scr).forEach(i => i.oninput = () => {
     const key = i.dataset.themeColor, colors = Object.assign({}, settings().themeColors || {});
     colors[key] = i.value; setSetting('themeColors', colors); applyTheme();
   });
   $('#resetThemeColors').onclick = () => { setSetting('themeColors', {}); applyTheme(); viewSettings(); };
-  $$('[data-set]').forEach(i => i.onchange = async () => {
+  $$('[data-set]', scr).forEach(i => i.onchange = async () => {
     const k = i.dataset.set;
     if (k === 'notify' && i.checked) {
       if (!('Notification' in window)) { toast('Este navegador no admite notificaciones.'); i.checked = false; return; }
@@ -135,7 +136,7 @@ function viewSettings() {
     if (k === 'sound' && i.checked) { unlockAudio(); beep(1); }
     if (k === 'vibrate' && i.checked && navigator.vibrate) navigator.vibrate(150);
   });
-  $$('[data-tpl]').forEach(b => b.onclick = async () => {
+  $$('[data-tpl]', scr).forEach(b => b.onclick = async () => {
     const arr = templates(), t = arr.find(x => x.id === b.dataset.tpl); if (!t) return;
     const k = await actionMenu(t.name, [{ key: 'today', label: 'Empezar hoy' }, { key: 'rename', label: 'Renombrar' }, { key: 'delete', label: 'Eliminar plantilla', danger: true }]);
     if (k === 'today') startTemplate(t, todayStr());
@@ -183,7 +184,7 @@ function viewLibrary() {
   };
   $('#newExercise').onclick = () => go('library/new');
   $('#libSearch').oninput = e => { libQuery = e.target.value.trim(); draw(); };
-  $$('[data-g]').forEach(b => b.onclick = () => { libGroup = b.dataset.g; $$('[data-g]').forEach(c => c.classList.toggle('on', c === b)); draw(); });
+  $$('[data-g]', $('#screen')).forEach(b => b.onclick = () => { libGroup = b.dataset.g; $$('[data-g]', $('#screen')).forEach(c => c.classList.toggle('on', c === b)); draw(); });
   draw();
 }
 
@@ -247,9 +248,9 @@ function viewEditor({ id }) {
       ${i === 0 ? (repo ? '' : '<span class="img-badge">Principal</span>') : `<button type="button" class="img-act left" data-main="${i}" aria-label="Poner primera">★</button>`}
       <button type="button" class="img-act" data-del="${i}" aria-label="Eliminar imagen">✕</button>
       <figcaption>${im.w ? `${im.w}×${im.h}` : ''}${im.bytes ? ` · ${fmtBytes(im.bytes)}` : ''}</figcaption></figure>`).join('') || '<div class="img-empty">Sin imágenes todavía</div>';
-    $$('[data-view]').forEach(b => b.onclick = () => openGallery(all, Number(b.dataset.view), $('#exName').value || ex.name));
-    $$('[data-main]').forEach(b => b.onclick = () => { const [im] = images.splice(Number(b.dataset.main), 1); images.unshift(im); drawImages(); });
-    $$('[data-del]').forEach(b => b.onclick = () => { images.splice(Number(b.dataset.del), 1); drawImages(); });
+    $$('[data-view]', $('#imgGrid')).forEach(b => b.onclick = () => openGallery(all, Number(b.dataset.view), $('#exName').value || ex.name));
+    $$('[data-main]', $('#imgGrid')).forEach(b => b.onclick = () => { const [im] = images.splice(Number(b.dataset.main), 1); images.unshift(im); drawImages(); });
+    $$('[data-del]', $('#imgGrid')).forEach(b => b.onclick = () => { images.splice(Number(b.dataset.del), 1); drawImages(); });
   };
   const addFiles = async files => {
     const list = Array.from(files || []); if (!list.length) return;

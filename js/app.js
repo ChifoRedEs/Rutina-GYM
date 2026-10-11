@@ -107,8 +107,6 @@ document.addEventListener('visibilitychange', () => {
   refreshCovers();
 });
 window.addEventListener('pagehide', flushSaves);
-window.addEventListener('error', e => console.error(e.error || e.message));
-window.addEventListener('unhandledrejection', e => console.error(e.reason));
 
 /* ---------- arranque ---------- */
 (async function start() {

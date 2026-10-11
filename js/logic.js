@@ -10,7 +10,6 @@ const progressPct = s => (totalSets(s) ? (completedSets(s) / totalSets(s)) * 100
 const setVolume = x => (isDoneWork(x) ? (num(x.weight) || 0) * (num(x.reps) || 0) : 0);
 const exerciseVolume = e => e.sets.reduce((a, x) => a + setVolume(x), 0);
 const sessionVolume = s => s.exercises.reduce((n, e) => n + exerciseVolume(e), 0);
-const workingSetCount = s => s.exercises.reduce((n, e) => n + e.sets.filter(isDoneWork).length, 0);
 const sessionDuration = s => (s.startedAt && s.finishedAt ? s.finishedAt - s.startedAt : null);
 
 /* 1RM estimado (Epley). Poco fiable por encima de ~12 repeticiones, pero útil para ver tendencia. */

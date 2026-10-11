@@ -1,7 +1,7 @@
 /* Rutina Gym — utilidades comunes (sin dependencias). */
 'use strict';
 
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.3.1';
 const DATA = window.GYM_DATA || {};
 const GROUPS = DATA.GROUPS || {};
 const SUBGROUPS = DATA.SUBGROUPS || {};
@@ -105,11 +105,4 @@ function download(content, name, type) {
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
-function debounce(fn, ms) {
-  let t;
-  const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-  d.flush = (...a) => { clearTimeout(t); fn(...a); };
-  return d;
 }
