@@ -85,7 +85,15 @@ function viewSettings() {
     <button type="button" class="card settings-hero" id="manageExercises"><span><b>Biblioteca de ejercicios</b><span class="small muted">Imágenes, tutoriales, objetivos, descanso e incremento de peso de cada ejercicio.</span></span><span class="go">›</span></button>
 
     <div class="card"><h3>Apariencia</h3>
-      <div class="segmented" role="radiogroup" aria-label="Tema">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${c.theme === k}" class="${c.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div></div>
+      <p class="small muted">Elige el modo general y personaliza los colores de las pantallas. Los cambios se guardan en este dispositivo.</p>
+      <div class="segmented" role="radiogroup" aria-label="Tema">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${c.theme === k}" class="${c.theme === k ? 'on' : ''}" data-theme="${k}">${l}</button>`).join('')}</div>
+      <div class="theme-color-grid">
+        <label class="theme-color-option"><span><b>Fondo general</b><span class="small muted">Detrás de las tarjetas y secciones</span></span><input type="color" data-theme-color="bg" value="${esc((c.themeColors || {}).bg || (c.theme === 'dark' ? '#141824' : '#f5f7fb'))}" aria-label="Color del fondo general"></label>
+        <label class="theme-color-option"><span><b>Fondo de tarjetas</b><span class="small muted">Ventanas, bloques y paneles</span></span><input type="color" data-theme-color="surface" value="${esc((c.themeColors || {}).surface || (c.theme === 'dark' ? '#1c2130' : '#ffffff'))}" aria-label="Color de las tarjetas"></label>
+        <label class="theme-color-option"><span><b>Color principal</b><span class="small muted">Botones y elementos destacados</span></span><input type="color" data-theme-color="accent" value="${esc((c.themeColors || {}).accent || (c.theme === 'dark' ? '#9a82ff' : '#7c5cff'))}" aria-label="Color principal"></label>
+      </div>
+      <button type="button" class="btn full" id="resetThemeColors">Restablecer colores predeterminados</button>
+    </div>
 
     <div class="card"><h3>Durante el entreno</h3>
       ${toggle('autoRest', 'Descanso automático', 'Arranca el temporizador al marcar una serie.')}
@@ -111,6 +119,11 @@ function viewSettings() {
 
   $('#manageExercises').onclick = () => go('library');
   $$('[data-theme]').forEach(b => b.onclick = () => { setSetting('theme', b.dataset.theme); applyTheme(); viewSettings(); });
+  $$('[data-theme-color]').forEach(i => i.oninput = () => {
+    const key = i.dataset.themeColor, colors = Object.assign({}, settings().themeColors || {});
+    colors[key] = i.value; setSetting('themeColors', colors); applyTheme();
+  });
+  $('#resetThemeColors').onclick = () => { setSetting('themeColors', {}); applyTheme(); viewSettings(); };
   $$('[data-set]').forEach(i => i.onchange = async () => {
     const k = i.dataset.set;
     if (k === 'notify' && i.checked) {

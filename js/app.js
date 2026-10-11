@@ -60,10 +60,27 @@ function render() {
 }
 
 function applyTheme() {
-  const t = settings().theme;
-  if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  const cfg = settings();
+  const t = cfg.theme || 'auto';
+  const root = document.documentElement;
+  if (t === 'auto') delete root.dataset.theme; else root.dataset.theme = t;
+  const colors = cfg.themeColors || {};
+  const vars = { bg: '--bg', surface: '--surface', accent: '--accent' };
+  Object.entries(vars).forEach(([key, variable]) => {
+    const value = colors[key];
+    if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)) root.style.setProperty(variable, value);
+    else root.style.removeProperty(variable);
+  });
+  // Mantiene legibles los elementos que usan el color de acento.
+  if (colors.accent && /^#[0-9a-fA-F]{6}$/.test(colors.accent)) {
+    root.style.setProperty('--accent-2', colors.accent);
+    root.style.setProperty('--accent-text', colors.accent);
+    root.style.setProperty('--accent-soft', colors.accent + '22');
+  } else {
+    ['--accent-2', '--accent-text', '--accent-soft'].forEach(v => root.style.removeProperty(v));
+  }
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  $('meta[name="theme-color"]')?.setAttribute('content', dark ? '#141824' : '#f5f7fb');
+  $('meta[name="theme-color"]')?.setAttribute('content', colors.bg || (dark ? '#141824' : '#f5f7fb'));
 }
 
 /* Comprueba en segundo plano qué portadas hay en assets/exercises/img/ y, si cambió algo,
@@ -103,9 +120,6 @@ window.addEventListener('unhandledrejection', e => console.error(e.reason));
   render();
   if (restState()) runRest();
   refreshCovers();
-  // GitHub Pages no permite listar la carpeta; reconsulta los nombres conocidos
-  // periódicamente. probeCovers limita las comprobaciones a una vez cada 5 minutos.
-  window.setInterval(() => refreshCovers(), 60 * 1000);
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     const hadController = Boolean(navigator.serviceWorker.controller);

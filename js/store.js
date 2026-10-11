@@ -25,7 +25,7 @@ function lsRemove(key) { try { localStorage.removeItem(key); } catch { /* sin ac
 function lsKeys(prefix) { try { return Object.keys(localStorage).filter(k => k.startsWith(prefix)); } catch { return []; } }
 
 /* ---------- ajustes ---------- */
-const DEFAULT_SETTINGS = { theme: 'auto', sound: true, vibrate: true, wakeLock: true, autoRest: true, lastBackup: null, backupReminderDays: 7 };
+const DEFAULT_SETTINGS = { theme: 'auto', themeColors: {}, sound: true, vibrate: true, wakeLock: true, autoRest: true, lastBackup: null, backupReminderDays: 7 };
 function settings() { return Object.assign({}, DEFAULT_SETTINGS, lsRead(K.settings, {})); }
 function setSetting(key, value) { const s = settings(); s[key] = value; lsWrite(K.settings, s); return s; }
 
