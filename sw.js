@@ -5,7 +5,7 @@
 const CACHE = 'rutina-gym-v3.3.1';
 const ASSETS = [
   './', './index.html', './manifest.json', './css/app.css', './data/exercises.js', './data/covers.js',
-  './js/error-monitor.js', './js/util.js', './js/store.js', './js/images.js', './js/logic.js', './js/timer.js', './js/charts.js',
+  './js/util.js', './js/store.js', './js/images.js', './js/logic.js', './js/timer.js', './js/charts.js',
   './js/backup.js', './js/views-train.js', './js/views-manage.js', './js/app.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'
 ];
