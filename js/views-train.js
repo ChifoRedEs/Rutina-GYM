@@ -310,7 +310,9 @@ function viewWorkout({ id }) {
 }
 
 function isIsometricExercise(def) {
+  // El tipo elegido en la ficha prevalece; la detección por nombre solo cubre ejercicios antiguos sin tipo.
   if (def?.tracking === 'time' || def?.isometric === true) return true;
+  if (def?.tracking === 'weight') return false;
   return /plancha|plank|wall\s*sit|sentadilla\s*isom|isom[eé]tric|hollow\s*hold|dead\s*hang|l[- ]?sit|superman\s*est[aá]tic/i.test(`${def?.name || ''} ${def?.instructions || ''}`);
 }
 function formatHold(seconds) {
@@ -321,8 +323,8 @@ function exerciseCard(s, e, idx, { update, redraw }) {
   const def = exerciseById(e.id) || e;
   const timed = isIsometricExercise(def);
   const imgs = exerciseImages(def), img = imgs[0] || null;
-  const prev = lastPerformance(e.id, s);
-  const sug = suggestion(def, prev?.exercise);
+  const prev = timed ? null : lastPerformance(e.id, s);
+  const sug = timed ? null : suggestion(def, prev?.exercise);
   const min = num(def.targetRepsMin) || 8, max = num(def.targetRepsMax) || 12, rir = num(def.targetRIR) ?? 1;
   const rest = num(e.restSeconds) ?? num(def.restSeconds) ?? 90;
   const tutorial = safeUrl(def.tutorialUrl), external = safeUrl(def.externalUrl);
@@ -336,9 +338,9 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       <div class="ex-title"><h3>${esc(e.name)}</h3><span class="small muted">${esc(e.primary)}${e.secondary ? ', ' + esc(e.secondary) : ''}</span></div>
       <button type="button" class="icon-btn" data-exmenu aria-label="Opciones del ejercicio">⋯</button>
     </div>
-    <div class="ex-meta small"><span>Objetivo ${min}–${max} reps · RIR ${rir}</span><span>Descanso ${formatClock(rest)}</span></div>
-    ${prev ? `<p class="small muted prev">Última vez (${esc(formatDateShort(prev.session.date))}): ${prev.exercise.sets.filter(isDoneWork).map(x => `${fmtNum(num(x.weight) || 0)}×${esc(x.reps)}`).join(' · ')}</p>` : '<p class="small muted prev">Primera vez con este ejercicio.</p>'}
-    ${sug ? `<p class="suggest ${sug.kind}">${esc(sug.text)}</p>` : ''}
+    <div class="ex-meta small"><span>${timed ? 'Series por tiempo · cronómetro individual' : `Objetivo ${min}–${max} reps · RIR ${rir}`}</span><span>Descanso ${formatClock(rest)}</span></div>
+    ${!timed ? (prev ? `<p class="small muted prev">Última vez (${esc(formatDateShort(prev.session.date))}): ${prev.exercise.sets.filter(isDoneWork).map(x => `${fmtNum(num(x.weight) || 0)}×${esc(x.reps)}`).join(' · ')}</p>` : '<p class="small muted prev">Primera vez con este ejercicio.</p>') : ''}
+    ${!timed && sug ? `<p class="suggest ${sug.kind}">${esc(sug.text)}</p>` : ''}
     ${def.instructions || tutorial || external ? `<div class="ex-links">
       ${def.instructions ? `<details><summary>Cómo se hace</summary><p class="small exercise-instructions">${esc(def.instructions)}</p></details>` : ''}
       ${tutorial ? '<button type="button" class="btn small-btn" data-tutorial>▶ Tutorial</button>' : ''}
@@ -397,8 +399,8 @@ function exerciseCard(s, e, idx, { update, redraw }) {
         }
         x.completed = !x.completed;
         if (x.completed) {
-          if (x.weight === '' && x.hintWeight !== '') x.weight = String(x.hintWeight);
-          if (x.reps === '' && x.hintReps !== '') x.reps = String(x.hintReps);
+          if (!timed && x.weight === '' && x.hintWeight !== '') x.weight = String(x.hintWeight);
+          if (!timed && x.reps === '' && x.hintReps !== '') x.reps = String(x.hintReps);
           if (!s.startedAt) s.startedAt = Date.now();
           if (s.status === 'completed' && s.finishedAt) s.finishedAt = Math.max(s.finishedAt, Date.now());
           if (settings().autoRest) startRest(rest, e.name);
@@ -422,9 +424,9 @@ function exerciseCard(s, e, idx, { update, redraw }) {
 
   $('[data-addset]', card).onclick = () => {
     const last = e.sets[e.sets.length - 1];
-    e.sets.push(normalizeSet({ type: 'working', hintWeight: last ? (last.weight || last.hintWeight) : '', hintReps: last ? (last.reps || last.hintReps) : '' }, e.sets.length));
+    e.sets.push(normalizeSet({ type: 'working', duration: 0, hintWeight: timed ? '' : (last ? (last.weight || last.hintWeight) : ''), hintReps: timed ? '' : (last ? (last.reps || last.hintReps) : '') }, e.sets.length));
     saveSession(s); drawSets(); update();
-    $$('.set-row input[data-f="weight"]', body).pop()?.focus();
+    if (!timed) $$('.set-row input[data-f="weight"]', body).pop()?.focus();
   };
   $('[data-rest]', card).onclick = () => startRest(rest, e.name);
   $('[data-note]', card).oninput = ev => { e.notes = ev.target.value; scheduleSave(s); };

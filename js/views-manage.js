@@ -192,7 +192,7 @@ function viewLibrary() {
 const MAX_IMAGES = 8;
 function viewEditor({ id }) {
   const isNew = id === 'new';
-  const existing = isNew ? { id: uid('custom'), name: '', group: libGroup !== 'all' ? libGroup : 'empuje', subgroup: '', equip: 'maquina', primary: '', secondary: '', restSeconds: 90, targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, increment: 2.5, tutorialUrl: '', externalUrl: '', instructions: '', notes: '', imagePath: '' } : exerciseById(id);
+  const existing = isNew ? { id: uid('custom'), name: '', group: libGroup !== 'all' ? libGroup : 'empuje', subgroup: '', equip: 'maquina', primary: '', secondary: '', restSeconds: 90, tracking: 'weight', targetRepsMin: 8, targetRepsMax: 12, targetRIR: 1, increment: 2.5, tutorialUrl: '', externalUrl: '', instructions: '', notes: '', imagePath: '' } : exerciseById(id);
   if (!existing) { toast('No se ha encontrado el ejercicio.'); return go('library', { replace: true }); }
   const ex = existing;
   let images = mediaImages(ex.id).slice();
@@ -225,11 +225,13 @@ function viewEditor({ id }) {
       <div class="grid-2"><label>Grupo<select id="exGroup">${Object.entries(GROUPS).map(([k, g]) => `<option value="${k}" ${ex.group === k ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}</select></label>
       <label>Material<select id="exEquip">${Object.entries(EQUIP).map(([k, v]) => `<option value="${k}" ${ex.equip === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>
       <label>Zona<select id="exSubgroup"></select></label>
+      <label>Tipo de serie<select id="exTracking"><option value="weight" ${ex.tracking !== 'time' ? 'selected' : ''}>Serie de Peso (kg, reps, RIR)</option><option value="time" ${ex.tracking === 'time' ? 'selected' : ''}>Serie de Tiempo (temporizador)</option></select></label>
       <div class="grid-2"><label>Músculo principal<input id="exPrimary" value="${esc(ex.primary)}"></label><label>Secundarios<input id="exSecondary" value="${esc(ex.secondary || '')}"></label></div></div>
 
-    <div class="card"><h3>Objetivos y progresión</h3>
+    <div class="card"><h3>Descanso</h3><label>Descanso entre series (segundos)<input id="exRest" type="number" inputmode="numeric" min="0" step="5" value="${esc(ex.restSeconds ?? 90)}"></label></div>
+    <div class="card" id="exerciseGoals"><h3>Objetivos y progresión</h3>
       <div class="grid-2"><label>Reps mínimas<input id="exMin" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMin ?? 8)}"></label><label>Reps máximas<input id="exMax" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMax ?? 12)}"></label></div>
-      <div class="grid-2"><label>RIR objetivo<input id="exRIR" type="number" inputmode="numeric" min="0" max="10" value="${esc(ex.targetRIR ?? 1)}"></label><label>Descanso (segundos)<input id="exRest" type="number" inputmode="numeric" min="0" step="5" value="${esc(ex.restSeconds ?? 90)}"></label></div>
+      <label>RIR objetivo<input id="exRIR" type="number" inputmode="numeric" min="0" max="10" value="${esc(ex.targetRIR ?? 1)}"></label>
       <label>Incremento de peso (kg)<input id="exInc" type="text" inputmode="decimal" value="${esc(incrementOf(ex))}"></label>
       <p class="small muted">Cuando completes todas las series en las reps máximas con el RIR objetivo, la app te sugerirá subir este peso. Pon 0 en ejercicios de peso corporal.</p></div>
 
@@ -273,6 +275,8 @@ function viewEditor({ id }) {
     $('#exSubgroup').innerHTML = opts.map(x => `<option ${ex.subgroup === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
   };
   refreshSub(); $('#exGroup').onchange = refreshSub;
+  const refreshTrackingFields = () => { $('#exerciseGoals').classList.toggle('hidden', $('#exTracking').value === 'time'); };
+  $('#exTracking').onchange = refreshTrackingFields; refreshTrackingFields();
   $('#exEquip').onchange = () => { if ($('#exEquip').value === 'calistenia' && num($('#exInc').value) === 2.5) $('#exInc').value = '0'; };
 
   const previewTutorial = () => {
@@ -291,7 +295,7 @@ function viewEditor({ id }) {
     let min = Math.max(1, Math.round(num($('#exMin').value) || 8)), max = Math.max(1, Math.round(num($('#exMax').value) || 12));
     if (min > max) [min, max] = [max, min];
     const obj = Object.assign({}, ex, {
-      name, primary, group: $('#exGroup').value, subgroup: $('#exSubgroup').value, equip: $('#exEquip').value, secondary: $('#exSecondary').value.trim(),
+      name, primary, group: $('#exGroup').value, subgroup: $('#exSubgroup').value, equip: $('#exEquip').value, tracking: $('#exTracking').value === 'time' ? 'time' : 'weight', secondary: $('#exSecondary').value.trim(),
       imagePath: $('#exImagePath').value.trim(), tutorialUrl: safeUrl(tut), externalUrl: safeUrl(ext),
       instructions: $('#exInstructions').value.trim(), notes: $('#exNotes').value.trim(),
       restSeconds: Math.max(0, Math.round(num($('#exRest').value) ?? 90)), targetRIR: Math.min(10, Math.max(0, Math.round(num($('#exRIR').value) ?? 1))),
