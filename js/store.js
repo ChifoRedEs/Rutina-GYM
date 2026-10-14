@@ -44,7 +44,8 @@ function normalizeSet(x, i) {
     completed: Boolean(x?.completed),
     hintWeight: x?.hintWeight ?? '',
     hintReps: x?.hintReps ?? '',
-    duration: Math.max(0, Number(x?.duration) || 0)
+    duration: Math.max(0, Number(x?.duration) || 0),
+    targetDuration: Math.max(1, Number(x?.targetDuration) || 30)
   };
 }
 function normalizeSession(s) {
@@ -54,7 +55,16 @@ function normalizeSession(s) {
   s.notes = s.notes || '';
   s.createdAt = s.createdAt || Date.now();
   s.exercises = s.exercises.filter(e => e && e.id).map(e => {
-    e.sets = (Array.isArray(e.sets) ? e.sets : []).map(normalizeSet);
+    const def = exerciseById(e.id) || e;
+    const timed = def.tracking === 'time' || def.isometric === true;
+    e.sets = (Array.isArray(e.sets) ? e.sets : []).map((set, i) => {
+      // Migración desde el antiguo cronómetro ascendente: conserva el estado completado,
+      // pero no interpreta el tiempo transcurrido antiguo como tiempo objetivo nuevo.
+      if (timed && set && set.targetDuration == null) {
+        return normalizeSet(Object.assign({}, set, { targetDuration: 30, duration: set.completed ? 30 : 0 }), i);
+      }
+      return normalizeSet(set, i);
+    });
     e.notes = e.notes || '';
     return e;
   });

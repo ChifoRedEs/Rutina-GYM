@@ -317,7 +317,17 @@ function isIsometricExercise(def) {
 }
 function formatHold(seconds) {
   const n = Math.max(0, Math.floor(Number(seconds) || 0));
-  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+}
+function parseHold(value) {
+  const raw = String(value ?? '').trim();
+  if (/^\d{1,3}:\d{1,2}$/.test(raw)) {
+    const [m, sec] = raw.split(':').map(Number);
+    if (sec > 59) return null;
+    return m * 60 + sec;
+  }
+  if (/^\d+$/.test(raw)) return Number(raw);
+  return null;
 }
 function exerciseCard(s, e, idx, { update, redraw }) {
   const def = exerciseById(e.id) || e;
@@ -346,7 +356,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       ${tutorial ? '<button type="button" class="btn small-btn" data-tutorial>▶ Tutorial</button>' : ''}
       ${external ? `<a class="btn small-btn" href="${esc(external)}" target="_blank" rel="noopener">Más información</a>` : ''}</div>` : ''}
     <div class="sets" role="table" aria-label="Series de ${esc(e.name)}">
-      <div class="set-row set-head ${timed ? 'timed' : ''}" role="row"><span>Serie</span>${timed ? '<span>Tiempo</span><span></span><span></span>' : '<span>kg</span><span>Reps</span><span>RIR</span><span></span>'}</div>
+      <div class="set-row set-head ${timed ? 'timed' : ''}" role="row"><span>Serie</span>${timed ? '<span>Deseado</span><span>Restante</span><span></span><span></span>' : '<span>kg</span><span>Reps</span><span>RIR</span><span></span>'}</div>
       <div class="set-body"></div>
     </div>
     <div class="ex-foot"><button type="button" class="btn small-btn" data-addset>+ Serie</button><button type="button" class="btn small-btn" data-rest>Descanso ${formatClock(rest)}</button></div>
@@ -359,7 +369,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       const warm = x.type === 'warmup'; if (!warm) w++;
       return `<div class="set-row ${timed ? 'timed' : ''} ${warm ? 'warmup' : ''} ${x.completed ? 'done' : ''}" data-set="${esc(x.id)}" role="row">
         <button type="button" class="set-num" data-setmenu aria-label="${warm ? 'Serie de calentamiento' : `Serie ${w}`}: opciones">${warm ? 'C' : w}</button>
-        ${timed ? `<span class="hold-clock" data-hold-clock>${formatHold(x.duration)}</span><button type="button" class="btn small-btn" data-hold-toggle>${x._running ? 'Parar' : 'Iniciar'}</button><button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>` : `<input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
+        ${timed ? `<input class="hold-target" data-target-time value="${formatHold(x.targetDuration)}" placeholder="00:30" inputmode="numeric" aria-label="Tiempo deseado en minutos y segundos" ${x._running ? 'disabled' : ''}><span class="hold-clock" data-hold-clock>${formatHold(Math.max(0, x.targetDuration - x.duration))}</span><button type="button" class="btn small-btn" data-hold-toggle>${x._running ? 'Parar' : (x.duration > 0 && x.duration < x.targetDuration ? 'Continuar' : 'Iniciar')}</button><button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>` : `<input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
         <input data-f="reps" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.reps)}" placeholder="${esc(x.hintReps !== '' ? x.hintReps : 'reps')}" aria-label="Repeticiones">
         <input data-f="rir" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.rir)}" placeholder="${rir}" aria-label="RIR">
         <button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>`}</div>`;
@@ -368,33 +378,56 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       const x = e.sets.find(z => z.id === row.dataset.set); if (!x) return;
       $$('input', row).forEach(input => input.oninput = () => { x[input.dataset.f] = input.value.trim(); scheduleSave(s); update(); });
       if (timed) {
+        const targetInput = $('[data-target-time]', row);
+        targetInput.onchange = () => {
+          if (x._running) return;
+          const target = parseHold(targetInput.value);
+          if (target === null || target < 1 || target > 5999) {
+            targetInput.value = formatHold(x.targetDuration);
+            toast('Introduce un tiempo válido en formato mm:ss (máximo 99:59).');
+            return;
+          }
+          x.targetDuration = target;
+          x.duration = Math.min(Number(x.duration) || 0, target);
+          if (x.duration < target) x.completed = false;
+          saveSession(s); drawSets(); update();
+        };
         const toggle = $('[data-hold-toggle]', row);
         toggle.onclick = () => {
           if (x._running) {
-            x.duration = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
+            x.duration = Math.min(x.targetDuration, (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000));
             x._running = false; delete x._startedAt; delete x._baseDuration;
             saveSession(s); drawSets();
           } else {
+            if (x.duration >= x.targetDuration) { x.duration = 0; x.completed = false; }
             x._baseDuration = Number(x.duration) || 0; x._startedAt = Date.now(); x._running = true;
             const timer = setInterval(() => {
               if (!x._running) { clearInterval(timer); return; }
               const elapsed = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
-              x.duration = elapsed;
+              x.duration = Math.min(x.targetDuration, elapsed);
               if (!row.isConnected) {
                 x._running = false; delete x._startedAt; delete x._baseDuration;
                 saveSession(s); clearInterval(timer); return;
               }
               const clock = $('[data-hold-clock]', row);
-              if (clock) clock.textContent = formatHold(elapsed);
+              if (clock) clock.textContent = formatHold(Math.max(0, x.targetDuration - x.duration));
+              if (x.duration >= x.targetDuration) {
+                x._running = false; x.completed = true; delete x._startedAt; delete x._baseDuration;
+                if (!s.startedAt) s.startedAt = Date.now();
+                saveSession(s); clearInterval(timer); drawSets(); update();
+                if (settings().sound) beep(3);
+                if (settings().autoRest) startRest(rest, e.name);
+                return;
+              }
               scheduleSave(s);
-            }, 250);
+            }, 200);
             toggle.textContent = 'Parar';
           }
         };
       }
       $('[data-check]', row).onclick = () => {
         if (timed && x._running) {
-          x.duration = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
+          x.duration = Math.min(x.targetDuration, (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000));
           x._running = false; delete x._startedAt; delete x._baseDuration;
         }
         x.completed = !x.completed;
@@ -424,7 +457,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
 
   $('[data-addset]', card).onclick = () => {
     const last = e.sets[e.sets.length - 1];
-    e.sets.push(normalizeSet({ type: 'working', duration: 0, hintWeight: timed ? '' : (last ? (last.weight || last.hintWeight) : ''), hintReps: timed ? '' : (last ? (last.reps || last.hintReps) : '') }, e.sets.length));
+    e.sets.push(normalizeSet({ type: 'working', duration: 0, targetDuration: 30, hintWeight: timed ? '' : (last ? (last.weight || last.hintWeight) : ''), hintReps: timed ? '' : (last ? (last.reps || last.hintReps) : '') }, e.sets.length));
     saveSession(s); drawSets(); update();
     if (!timed) $$('.set-row input[data-f="weight"]', body).pop()?.focus();
   };
