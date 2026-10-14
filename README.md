@@ -1,4 +1,4 @@
-# Rutina Gym 3.2
+# Rutina Gym 3.3.1
 
 Aplicación web para registrar entrenamientos de gimnasio desde el móvil o el ordenador. Funciona sin servidor, sin conexión y se puede instalar como app.
 
