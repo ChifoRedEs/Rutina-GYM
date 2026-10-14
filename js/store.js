@@ -43,7 +43,8 @@ function normalizeSet(x, i) {
     rir: x?.rir ?? '',
     completed: Boolean(x?.completed),
     hintWeight: x?.hintWeight ?? '',
-    hintReps: x?.hintReps ?? ''
+    hintReps: x?.hintReps ?? '',
+    duration: Math.max(0, Number(x?.duration) || 0)
   };
 }
 function normalizeSession(s) {

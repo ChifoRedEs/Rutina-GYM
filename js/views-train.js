@@ -141,10 +141,20 @@ function bindSessionItems(root) {
   $$('[data-open]', root).forEach(b => b.onclick = () => go(`workout/${b.dataset.open}`));
   $$('[data-more]', root).forEach(b => b.onclick = async () => {
     const s = getSession(b.dataset.more); if (!s) return;
-    const k = await actionMenu(s.name, [{ key: 'open', label: 'Abrir' }, { key: 'repeat', label: 'Repetir hoy' }, { key: 'delete', label: 'Eliminar sesión', danger: true }]);
+    const k = await actionMenu(s.name, [
+      { key: 'open', label: 'Abrir' },
+      { key: 'repeat', label: 'Repetir hoy' },
+      { key: 'copyDate', label: 'Copiar en otra fecha' },
+      { key: 'delete', label: 'Eliminar sesión', danger: true }
+    ]);
     if (!k && routeName() === 'day') return render();
     if (k === 'open') go(`workout/${s.id}`);
     if (k === 'repeat') repeatSession(s, todayStr());
+    if (k === 'copyDate') {
+      const date = await ask('Fecha de destino (AAAA-MM-DD)', { ok: 'Copiar', input: todayStr() });
+      if (date && isDate(date) && dateStr(parseDate(date)) === date) repeatSession(s, date);
+      else if (date) toast('Fecha no válida. Usa el formato AAAA-MM-DD.');
+    }
     if (k === 'delete') confirmDeleteSession(s, () => render());
   });
 }
@@ -299,8 +309,17 @@ function viewWorkout({ id }) {
   };
 }
 
+function isIsometricExercise(def) {
+  if (def?.tracking === 'time' || def?.isometric === true) return true;
+  return /plancha|plank|wall\s*sit|sentadilla\s*isom|isom[eé]tric|hollow\s*hold|dead\s*hang|l[- ]?sit|superman\s*est[aá]tic/i.test(`${def?.name || ''} ${def?.instructions || ''}`);
+}
+function formatHold(seconds) {
+  const n = Math.max(0, Math.floor(Number(seconds) || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+}
 function exerciseCard(s, e, idx, { update, redraw }) {
   const def = exerciseById(e.id) || e;
+  const timed = isIsometricExercise(def);
   const imgs = exerciseImages(def), img = imgs[0] || null;
   const prev = lastPerformance(e.id, s);
   const sug = suggestion(def, prev?.exercise);
@@ -325,7 +344,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       ${tutorial ? '<button type="button" class="btn small-btn" data-tutorial>▶ Tutorial</button>' : ''}
       ${external ? `<a class="btn small-btn" href="${esc(external)}" target="_blank" rel="noopener">Más información</a>` : ''}</div>` : ''}
     <div class="sets" role="table" aria-label="Series de ${esc(e.name)}">
-      <div class="set-row set-head" role="row"><span>Serie</span><span>kg</span><span>Reps</span><span>RIR</span><span></span></div>
+      <div class="set-row set-head ${timed ? 'timed' : ''}" role="row"><span>Serie</span>${timed ? '<span>Tiempo</span><span></span><span></span>' : '<span>kg</span><span>Reps</span><span>RIR</span><span></span>'}</div>
       <div class="set-body"></div>
     </div>
     <div class="ex-foot"><button type="button" class="btn small-btn" data-addset>+ Serie</button><button type="button" class="btn small-btn" data-rest>Descanso ${formatClock(rest)}</button></div>
@@ -336,17 +355,46 @@ function exerciseCard(s, e, idx, { update, redraw }) {
     let w = 0;
     body.innerHTML = e.sets.map(x => {
       const warm = x.type === 'warmup'; if (!warm) w++;
-      return `<div class="set-row ${warm ? 'warmup' : ''} ${x.completed ? 'done' : ''}" data-set="${esc(x.id)}" role="row">
+      return `<div class="set-row ${timed ? 'timed' : ''} ${warm ? 'warmup' : ''} ${x.completed ? 'done' : ''}" data-set="${esc(x.id)}" role="row">
         <button type="button" class="set-num" data-setmenu aria-label="${warm ? 'Serie de calentamiento' : `Serie ${w}`}: opciones">${warm ? 'C' : w}</button>
-        <input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
+        ${timed ? `<span class="hold-clock" data-hold-clock>${formatHold(x.duration)}</span><button type="button" class="btn small-btn" data-hold-toggle>${x._running ? 'Parar' : 'Iniciar'}</button><button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>` : `<input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
         <input data-f="reps" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.reps)}" placeholder="${esc(x.hintReps !== '' ? x.hintReps : 'reps')}" aria-label="Repeticiones">
         <input data-f="rir" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.rir)}" placeholder="${rir}" aria-label="RIR">
-        <button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button></div>`;
+        <button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>`}</div>`;
     }).join('');
     $$('.set-row', body).forEach(row => {
       const x = e.sets.find(z => z.id === row.dataset.set); if (!x) return;
       $$('input', row).forEach(input => input.oninput = () => { x[input.dataset.f] = input.value.trim(); scheduleSave(s); update(); });
+      if (timed) {
+        const toggle = $('[data-hold-toggle]', row);
+        toggle.onclick = () => {
+          if (x._running) {
+            x.duration = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
+            x._running = false; delete x._startedAt; delete x._baseDuration;
+            saveSession(s); drawSets();
+          } else {
+            x._baseDuration = Number(x.duration) || 0; x._startedAt = Date.now(); x._running = true;
+            const timer = setInterval(() => {
+              if (!x._running) { clearInterval(timer); return; }
+              const elapsed = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
+              x.duration = elapsed;
+              if (!row.isConnected) {
+                x._running = false; delete x._startedAt; delete x._baseDuration;
+                saveSession(s); clearInterval(timer); return;
+              }
+              const clock = $('[data-hold-clock]', row);
+              if (clock) clock.textContent = formatHold(elapsed);
+              scheduleSave(s);
+            }, 250);
+            toggle.textContent = 'Parar';
+          }
+        };
+      }
       $('[data-check]', row).onclick = () => {
+        if (timed && x._running) {
+          x.duration = (x._baseDuration || 0) + Math.floor((Date.now() - x._startedAt) / 1000);
+          x._running = false; delete x._startedAt; delete x._baseDuration;
+        }
         x.completed = !x.completed;
         if (x.completed) {
           if (x.weight === '' && x.hintWeight !== '') x.weight = String(x.hintWeight);

@@ -313,3 +313,8 @@ body:has(.rest-bar.show) .toast{bottom:calc(var(--nav-h) + env(safe-area-inset-b
 .theme-color-option{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
 .theme-color-option>span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .theme-color-option input[type="color"]{width:48px;height:40px;flex:0 0 48px;padding:3px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);cursor:pointer}
+
+/* Series isométricas: tiempo acumulado por serie en lugar de kg/repeticiones/RIR. */
+.set-row.timed{grid-template-columns:38px minmax(54px,1fr) minmax(66px,1fr) 46px}
+.set-row.timed .hold-clock{display:block;text-align:center;font-variant-numeric:tabular-nums;font-weight:750;padding:10px 2px;background:var(--surface-2);border-radius:10px}
+.set-row.timed .btn{min-width:0;padding:8px 4px}
