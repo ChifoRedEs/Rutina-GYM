@@ -58,7 +58,7 @@ h3{margin:0 0 6px;font-size:16px;letter-spacing:-.01em}
 .icon-btn{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--text);font-size:20px;line-height:1;box-shadow:var(--shadow-sm)}
 #backBtn{font-size:26px;padding-bottom:3px}
 #screen{max-width:700px;margin:auto;padding:16px 16px 24px}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border)}
 .bottom-nav button{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);padding:7px 4px;font-size:11.5px;font-weight:650;border-radius:12px;text-align:center}
 .bottom-nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .bottom-nav button.active{color:var(--accent-text);background:var(--accent-soft)}

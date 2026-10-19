@@ -48,7 +48,7 @@ Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas
 - Ficha por ejercicio con varias imágenes, vídeo de YouTube (se reproduce dentro de la app), enlace, instrucciones, notas, objetivos de reps y RIR, descanso e incremento de peso.
 - Ejercicios personalizados.
 
-**Calorías (Ajustes → Perfil y gasto calórico)**
+**Calorías (pestaña Perfil)**
 - Peso, altura, edad, sexo y % de grasa (opcional) para estimar el gasto con el método MET.
 - Tipo de gasto (bruto o neto), referencia de 1 MET (estándar o según tu metabolismo basal), segundos por repetición y EPOC opcional.
 - Intensidad por defecto según el material y, en la ficha de cada ejercicio, intensidad o MET propio.

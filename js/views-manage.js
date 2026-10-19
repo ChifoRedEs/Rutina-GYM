@@ -1,4 +1,4 @@
-/* Rutina Gym — progreso, ajustes, biblioteca y editor de ejercicios. */
+/* Rutina Gym — progreso, perfil, ajustes, biblioteca y editor de ejercicios. */
 'use strict';
 
 /* ---------- progreso ---------- */
@@ -102,8 +102,6 @@ function viewSettings() {
       ${toggle('notify', 'Notificación al terminar el descanso', 'Útil si sales de la app. Funciona en Android; en iPhone solo con la app instalada.')}
       ${toggle('wakeLock', 'Mantener la pantalla encendida', 'Mientras tienes una sesión abierta.')}</div>
 
-    ${caloriesCardHTML()}
-
     <div class="card"><h3>Plantillas</h3>
       ${tpl.length ? `<div class="list">${tpl.map(t => `<div class="list-item tpl-row" style="--gc:${esc(groupColor(t.group))}"><span><b>${esc(t.name)}</b><span class="small muted">${esc(groupLabel(t.group))} · ${t.exercises.length} ejercicios</span></span><button type="button" class="icon-btn" data-tpl="${esc(t.id)}" aria-label="Opciones de la plantilla">⋯</button></div>`).join('')}</div>` : '<p class="small muted">Guarda una sesión como plantilla desde la pantalla del entreno («Guardar como plantilla»). Aparecerá al elegir un día.</p>'}</div>
 
@@ -121,7 +119,6 @@ function viewSettings() {
 
   $('#manageExercises').onclick = () => go('library');
   const scr = $('#screen');
-  bindCaloriesCard(scr);
   $$('[data-theme-mode]', scr).forEach(b => b.onclick = () => { setSetting('theme', b.dataset.themeMode); applyTheme(); viewSettings(); });
   $$('[data-theme-color]', scr).forEach(i => i.oninput = () => {
     const key = i.dataset.themeColor, colors = Object.assign({}, settings().themeColors || {});
@@ -164,7 +161,14 @@ function viewSettings() {
   })();
 }
 
-/* ---------- ajustes: perfil y gasto calórico ---------- */
+/* ---------- perfil ---------- */
+function viewProfile() {
+  setHeader('Perfil', 'Tus datos y el cálculo de calorías', false);
+  paint(caloriesCardHTML());
+  bindCaloriesCard($('#screen'));
+}
+
+/* ---------- perfil: datos corporales y gasto calórico ---------- */
 function caloriesCardHTML() {
   const b = calBodyRaw(), cfg = calConfig();
   const opt = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${l}</option>`;

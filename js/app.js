@@ -3,7 +3,7 @@
  * del navegador, así que el botón Atrás (también el de Android) funciona como se espera. */
 'use strict';
 
-const TOP_LEVEL = ['', 'history', 'stats', 'settings'];
+const TOP_LEVEL = ['', 'history', 'stats', 'profile', 'settings'];
 let leaveHandlers = [], lastPath = null, lastDay = todayStr();
 
 function currentParts() { return location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent); }
@@ -46,6 +46,7 @@ function render() {
       case 'workout': viewWorkout({ id: a }); break;
       case 'history': viewHistory(); break;
       case 'stats': if (a) viewExerciseStats({ id: a }); else viewStats(); break;
+      case 'profile': viewProfile(); break;
       case 'settings': viewSettings(); break;
       case 'library': if (a) viewEditor({ id: a }); else viewLibrary(); break;
       default: return go('', { replace: true });
@@ -89,7 +90,7 @@ async function refreshCovers(opts) {
   let changed = false;
   try { changed = await probeCovers(opts); } catch { return; }
   const [r, a] = currentParts();
-  if (changed && (['', 'history', 'stats', 'settings', 'day'].includes(r || '') || (r === 'library' && !a))) render();
+  if (changed && (['', 'history', 'stats', 'profile', 'settings', 'day'].includes(r || '') || (r === 'library' && !a))) render();
 }
 
 /* ---------- eventos globales ---------- */
