@@ -102,6 +102,8 @@ function viewSettings() {
       ${toggle('notify', 'Notificación al terminar el descanso', 'Útil si sales de la app. Funciona en Android; en iPhone solo con la app instalada.')}
       ${toggle('wakeLock', 'Mantener la pantalla encendida', 'Mientras tienes una sesión abierta.')}</div>
 
+    ${caloriesCardHTML()}
+
     <div class="card"><h3>Plantillas</h3>
       ${tpl.length ? `<div class="list">${tpl.map(t => `<div class="list-item tpl-row" style="--gc:${esc(groupColor(t.group))}"><span><b>${esc(t.name)}</b><span class="small muted">${esc(groupLabel(t.group))} · ${t.exercises.length} ejercicios</span></span><button type="button" class="icon-btn" data-tpl="${esc(t.id)}" aria-label="Opciones de la plantilla">⋯</button></div>`).join('')}</div>` : '<p class="small muted">Guarda una sesión como plantilla desde la pantalla del entreno («Guardar como plantilla»). Aparecerá al elegir un día.</p>'}</div>
 
@@ -119,6 +121,7 @@ function viewSettings() {
 
   $('#manageExercises').onclick = () => go('library');
   const scr = $('#screen');
+  bindCaloriesCard(scr);
   $$('[data-theme-mode]', scr).forEach(b => b.onclick = () => { setSetting('theme', b.dataset.themeMode); applyTheme(); viewSettings(); });
   $$('[data-theme-color]', scr).forEach(i => i.oninput = () => {
     const key = i.dataset.themeColor, colors = Object.assign({}, settings().themeColors || {});
@@ -159,6 +162,76 @@ function viewSettings() {
       if (navigator.storage?.estimate && us) { const e = await navigator.storage.estimate(); us.textContent = `En uso: ${fmtBytes(e.usage || 0)} de ${fmtBytes(e.quota || 0)} disponibles.`; }
     } catch { if (el) el.textContent = ''; }
   })();
+}
+
+/* ---------- ajustes: perfil y gasto calórico ---------- */
+function caloriesCardHTML() {
+  const b = calBodyRaw(), cfg = calConfig();
+  const opt = (v, cur, l) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${l}</option>`;
+  const field = (k, label, ph, extra = '') => `<label>${label}<input type="text" inputmode="decimal" data-body="${k}" value="${esc(b[k] ?? '')}" placeholder="${ph}" ${extra}></label>`;
+  const lvl = (k, label) => `<label>${label}<select data-cal-int="${k}">${opt('auto', cfg.intensity[k], 'Automática (según RIR)')}${Object.entries(CAL_LEVELS).map(([v, l]) => opt(v, cfg.intensity[k], l)).join('')}</select></label>`;
+  return `<div class="card" id="calCard"><h3>Perfil y gasto calórico</h3>
+    <p class="small muted">Sirve para estimar las calorías con el método MET. Cuantos más datos pongas, mejor la aproximación. Se guardan solo en este dispositivo y viajan en tus copias de seguridad.</p>
+    <div class="grid-2">
+      <label>Sexo<select data-body="sex">${opt('', b.sex, 'Sin indicar')}${opt('m', b.sex, 'Hombre')}${opt('f', b.sex, 'Mujer')}</select></label>
+      ${field('age', 'Edad (años)', '10–100')}
+    </div>
+    <div class="grid-2">${field('weight', 'Peso corporal (kg)', 'Ej. 72,5')}${field('height', 'Altura (cm)', 'Ej. 175')}</div>
+    ${field('bodyFat', '% de grasa corporal (opcional)', '3–60')}
+    <p class="small muted">El peso es imprescindible. Sexo, edad y altura afinan tu metabolismo basal; si indicas el % de grasa se usa una fórmula más precisa.</p>
+
+    <h3 style="margin-top:14px">Cómo se calcula</h3>
+    <label>Tipo de gasto<select data-cal="mode">${opt('gross', cfg.mode, 'Bruto: total durante el ejercicio')}${opt('net', cfg.mode, 'Neto: solo el extra por entrenar')}</select></label>
+    <label>Referencia de 1 MET<select data-cal="metRef">${opt('standard', cfg.metRef, 'Estándar (1 kcal por kg y hora)')}${opt('personal', cfg.metRef, 'Personalizada con mi metabolismo basal')}</select></label>
+    <div class="grid-2">
+      <label>Segundos por repetición<input type="text" inputmode="decimal" data-cal="secPerRep" value="${esc(cfg.secPerRep)}" placeholder="3"></label>
+      <label>Efecto postejercicio (EPOC)<select data-cal="epoc">${opt(0, cfg.epoc, 'No sumar')}${opt(5, cfg.epoc, '+5 %')}${opt(10, cfg.epoc, '+10 %')}</select></label>
+    </div>
+
+    <h3 style="margin-top:14px">Intensidad por defecto</h3>
+    ${lvl('maquina', 'Máquinas')}${lvl('libre', 'Peso libre')}${lvl('calistenia', 'Peso corporal')}
+    <p class="small muted">«Automática» deduce la intensidad del RIR que registras: 0–1 vigorosa, 2–3 moderada, 4 o más ligera. En la ficha de cada ejercicio puedes fijar una intensidad o un MET concreto.</p>
+    <div class="cal-preview small" id="calPreview" aria-live="polite"></div></div>`;
+}
+function bindCaloriesCard(scr) {
+  const card = $('#calCard', scr); if (!card) return;
+  const refresh = () => {
+    const b = calBody(), cfg = calConfig(), el = $('#calPreview', card);
+    if (!b.weight) { el.innerHTML = '<span class="muted">Indica tu peso corporal para ver una estimación.</span>'; return; }
+    const bmr = calBMR(b), ref = calKcalPerMetKgH(b, cfg);
+    const hour = lv => Math.round(calKcal(CAL_MET.libre[lv], 60, b, cfg));
+    el.innerHTML = `<b>Con estos datos, 1 hora de pesas ≈</b> ${hour('light')} kcal (ligera) · ${hour('moderate')} kcal (moderada) · ${hour('vigorous')} kcal (vigorosa).<br>` +
+      `<span class="muted">1 MET = ${fmtNum(round(ref * b.weight, 1))} kcal/h.${bmr ? ` Metabolismo basal estimado: ${fmtNum(Math.round(bmr.kcal))} kcal/día (${bmr.method}).` : ' Añade altura y edad (o % de grasa) para calcular tu metabolismo basal.'}${cfg.metRef === 'personal' && !bmr ? ' La referencia personalizada necesita esos datos; mientras tanto se usa la estándar.' : ''}</span>`;
+  };
+  $$('[data-body]', card).forEach(i => {
+    const k = i.dataset.body;
+    const save = loud => {
+      const body = Object.assign({}, calBodyRaw());
+      if (k === 'sex') body.sex = i.value;
+      else {
+        const raw = i.value.trim(), n = num(raw);
+        if (!raw) body[k] = '';
+        else if (calInRange(k, raw) === null) { if (loud) { toast(`Valor fuera de rango (${CAL_RANGES[k][0]}–${CAL_RANGES[k][1]}).`); i.value = body[k] ?? ''; } return; }
+        else body[k] = n;
+      }
+      setSetting('body', body); refresh();
+    };
+    if (i.tagName === 'SELECT') i.onchange = () => save(true); else { i.oninput = () => save(false); i.onchange = () => save(true); }
+  });
+  $$('[data-cal]', card).forEach(i => {
+    const k = i.dataset.cal;
+    const save = loud => {
+      const cfg = calConfig(); let v = i.value;
+      if (k === 'secPerRep') { const n = num(v); if (n === null || n < 1 || n > 10) { if (loud) { toast('Pon entre 1 y 10 segundos por repetición.'); i.value = cfg.secPerRep; } return; } v = n; }
+      if (k === 'epoc') v = Number(v);
+      setSetting('calc', Object.assign({}, cfg, { [k]: v })); refresh();
+    };
+    if (i.tagName === 'SELECT') i.onchange = () => save(true); else { i.oninput = () => save(false); i.onchange = () => save(true); }
+  });
+  $$('[data-cal-int]', card).forEach(i => i.onchange = () => {
+    const cfg = calConfig(); cfg.intensity[i.dataset.calInt] = i.value; setSetting('calc', cfg); refresh();
+  });
+  refresh();
 }
 
 /* ---------- biblioteca ---------- */
@@ -229,6 +302,10 @@ function viewEditor({ id }) {
       <div class="grid-2"><label>Músculo principal<input id="exPrimary" value="${esc(ex.primary)}"></label><label>Secundarios<input id="exSecondary" value="${esc(ex.secondary || '')}"></label></div></div>
 
     <div class="card"><h3>Descanso</h3><label>Descanso entre series (segundos)<input id="exRest" type="number" inputmode="numeric" min="0" step="5" value="${esc(ex.restSeconds ?? 90)}"></label></div>
+    <div class="card"><h3>Gasto calórico</h3>
+      <label>Intensidad de este ejercicio<select id="exIntensity"><option value="" ${!ex.intensity ? 'selected' : ''}>Según Ajustes (automática o por material)</option>${Object.entries(CAL_LEVELS).map(([k, l]) => `<option value="${k}" ${ex.intensity === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label>MET propio (opcional)<input id="exMet" type="text" inputmode="decimal" value="${esc(ex.met ?? '')}" placeholder="Ej. 5,5"></label>
+      <p class="small muted">Si escribes un MET (entre 1 y 15), sustituye a la intensidad. Referencias: 3,5 pesas ligeras · 5 moderadas · 6 vigorosas · 8 calistenia intensa.</p></div>
     <div class="card" id="exerciseGoals"><h3>Objetivos y progresión</h3>
       <div class="grid-2"><label>Reps mínimas<input id="exMin" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMin ?? 8)}"></label><label>Reps máximas<input id="exMax" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMax ?? 12)}"></label></div>
       <label>RIR objetivo<input id="exRIR" type="number" inputmode="numeric" min="0" max="10" value="${esc(ex.targetRIR ?? 1)}"></label>
@@ -292,12 +369,15 @@ function viewEditor({ id }) {
     if (!name || !primary) { toast('Escribe el nombre y el músculo principal.'); (name ? $('#exPrimary') : $('#exName')).focus(); return; }
     const tut = $('#exTutorial').value.trim(), ext = $('#exExternal').value.trim();
     if ((tut && !safeUrl(tut)) || (ext && !safeUrl(ext))) { toast('Revisa los enlaces: deben empezar por https://'); return; }
+    const metRaw = $('#exMet').value.trim(), metVal = num(metRaw);
+    if (metRaw && (metVal === null || metVal < 1 || metVal > 15)) { toast('El MET debe estar entre 1 y 15.'); $('#exMet').focus(); return; }
     let min = Math.max(1, Math.round(num($('#exMin').value) || 8)), max = Math.max(1, Math.round(num($('#exMax').value) || 12));
     if (min > max) [min, max] = [max, min];
     const obj = Object.assign({}, ex, {
       name, primary, group: $('#exGroup').value, subgroup: $('#exSubgroup').value, equip: $('#exEquip').value, tracking: $('#exTracking').value === 'time' ? 'time' : 'weight', secondary: $('#exSecondary').value.trim(),
       imagePath: $('#exImagePath').value.trim(), tutorialUrl: safeUrl(tut), externalUrl: safeUrl(ext),
       instructions: $('#exInstructions').value.trim(), notes: $('#exNotes').value.trim(),
+      intensity: $('#exIntensity').value, met: metRaw ? metVal : '',
       restSeconds: Math.max(0, Math.round(num($('#exRest').value) ?? 90)), targetRIR: Math.min(10, Math.max(0, Math.round(num($('#exRIR').value) ?? 1))),
       targetRepsMin: min, targetRepsMax: max, increment: Math.max(0, num($('#exInc').value) ?? 2.5)
     });

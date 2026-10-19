@@ -48,6 +48,12 @@ Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas
 - Ficha por ejercicio con varias imágenes, vídeo de YouTube (se reproduce dentro de la app), enlace, instrucciones, notas, objetivos de reps y RIR, descanso e incremento de peso.
 - Ejercicios personalizados.
 
+**Calorías (Ajustes → Perfil y gasto calórico)**
+- Peso, altura, edad, sexo y % de grasa (opcional) para estimar el gasto con el método MET.
+- Tipo de gasto (bruto o neto), referencia de 1 MET (estándar o según tu metabolismo basal), segundos por repetición y EPOC opcional.
+- Intensidad por defecto según el material y, en la ficha de cada ejercicio, intensidad o MET propio.
+- Los datos viajan en las copias de seguridad. Es una estimación, no una medición.
+
 **Datos**
 - Copia de seguridad JSON (incluye imágenes y plantillas) y exportación CSV para Excel.
 - Restauración segura: valida la copia antes de tocar nada, descarga antes tus datos actuales y, si algo falla, lo deja todo como estaba.

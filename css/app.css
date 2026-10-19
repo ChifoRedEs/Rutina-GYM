@@ -326,3 +326,5 @@ body:has(.rest-bar.show) .toast{bottom:calc(var(--nav-h) + env(safe-area-inset-b
 .set-row.timed{grid-template-columns:34px minmax(58px,.9fr) minmax(58px,.9fr) auto 40px}
 .set-row.timed .hold-clock{display:block;text-align:center;font-variant-numeric:tabular-nums;font-weight:750;padding:10px 2px;background:var(--surface-2);border-radius:10px}
 .set-row.timed .btn{min-width:0;padding:8px 4px}
+
+.cal-preview{margin-top:12px;padding:11px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);line-height:1.5}
