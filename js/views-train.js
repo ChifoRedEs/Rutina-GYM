@@ -438,7 +438,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
           }
           x.targetDuration = target;
           x.duration = Math.min(Number(x.duration) || 0, target);
-          if (x.duration < target) x.completed = false;
+          if (x.duration < target) { x.completed = false; x.doneAt = 0; }
           saveSession(s); drawSets(); update();
         };
         const toggle = $('[data-hold-toggle]', row);
@@ -448,7 +448,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
             x._running = false; delete x._startedAt; delete x._baseDuration;
             saveSession(s); drawSets();
           } else {
-            if (x.duration >= x.targetDuration) { x.duration = 0; x.completed = false; }
+            if (x.duration >= x.targetDuration) { x.duration = 0; x.completed = false; x.doneAt = 0; }
             x._baseDuration = Number(x.duration) || 0; x._startedAt = Date.now(); x._running = true;
             const timer = setInterval(() => {
               if (!x._running) { clearInterval(timer); return; }
@@ -461,7 +461,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
               const clock = $('[data-hold-clock]', row);
               if (clock) clock.textContent = formatHold(Math.max(0, x.targetDuration - x.duration));
               if (x.duration >= x.targetDuration) {
-                x._running = false; x.completed = true; delete x._startedAt; delete x._baseDuration;
+                x._running = false; x.completed = true; x.doneAt = Date.now(); delete x._startedAt; delete x._baseDuration;
                 if (!s.startedAt) s.startedAt = Date.now();
                 saveSession(s); clearInterval(timer); drawSets(); update();
                 if (settings().sound) beep(3);
@@ -480,11 +480,12 @@ function exerciseCard(s, e, idx, { update, redraw }) {
           x._running = false; delete x._startedAt; delete x._baseDuration;
         }
         x.completed = !x.completed;
+        x.doneAt = x.completed ? Date.now() : 0;
         if (x.completed) {
           if (!timed && x.weight === '' && x.hintWeight !== '') x.weight = String(x.hintWeight);
           if (!timed && x.reps === '' && x.hintReps !== '') x.reps = String(x.hintReps);
           if (!s.startedAt) s.startedAt = Date.now();
-          if (s.status === 'completed' && s.finishedAt) s.finishedAt = Math.max(s.finishedAt, Date.now());
+          if (s.status === 'completed' && s.finishedAt && Date.now() - s.finishedAt < 30 * 60000) s.finishedAt = Math.max(s.finishedAt, Date.now());
           if (settings().autoRest) startRest(rest, e.name);
         }
         saveSession(s); drawSets(); update();
@@ -496,7 +497,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
           { key: 'del', label: 'Eliminar serie', danger: true }]);
         const i = e.sets.indexOf(x);
         if (k === 'type') x.type = x.type === 'warmup' ? 'working' : 'warmup';
-        if (k === 'dup') e.sets.splice(i + 1, 0, normalizeSet(Object.assign({}, x, { id: null, completed: false }), 0));
+        if (k === 'dup') e.sets.splice(i + 1, 0, normalizeSet(Object.assign({}, x, { id: null, completed: false, doneAt: 0 }), 0));
         if (k === 'del') e.sets.splice(i, 1);
         if (k) { e.sets = e.sets.map(normalizeSet); saveSession(s); drawSets(); update(); }
       };

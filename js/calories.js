@@ -161,6 +161,19 @@ function calExerciseKcal(e, cfg = calConfig(), b = calBody()) {
   const secs = calExerciseSeconds(e, def, cfg), m = calExerciseMet(def, e.sets, cfg);
   return { kcal: b.weight ? calKcal(m.met, secs / 60, b, cfg) : null, minutes: secs / 60, met: m.met, level: m.level };
 }
+/* Minutos realmente activos de una sesión: suma de los intervalos entre series hechas (cada hueco se limita
+ * a 20 min, así una pausa larga o una sesión reabierta horas después no suma gasto) más un cierre de hasta 5 min.
+ * Sesiones antiguas sin marcas de tiempo: la duración guardada, con tope de 1,6 × el tiempo de los ejercicios + 5 min. */
+const CAL_MAX_GAP_MIN = 20, CAL_TAIL_MIN = 5;
+function calActiveMinutes(s, sumMin, endAt) {
+  if (!s.startedAt || !endAt) return 0;
+  const marks = s.exercises.flatMap(e => (e.sets || []).filter(x => x.completed && x.doneAt).map(x => x.doneAt)).sort((a, b) => a - b);
+  if (!marks.length) return Math.min(Math.max(0, (endAt - s.startedAt) / 60000), sumMin * 1.6 + 5);
+  const pts = [s.startedAt, ...marks];
+  let t = 0;
+  for (let i = 1; i < pts.length; i++) t += Math.min(CAL_MAX_GAP_MIN, Math.max(0, (pts[i] - pts[i - 1]) / 60000));
+  return t + Math.min(CAL_TAIL_MIN, Math.max(0, (endAt - pts[pts.length - 1]) / 60000));
+}
 /* Calorías de una sesión.
  * rows: gasto de cada ejercicio (series + descansos entre series, igual que en su tarjeta).
  * extra: si la sesión duró más que la suma de sus ejercicios (cambios de máquina, pausas), ese tiempo se suma
@@ -171,7 +184,7 @@ function calSessionKcal(s, cfg = calConfig(), b = calBody(), endAt = s.finishedA
   if (!b.weight) return { total: null, rows, minutes: sumMin, avgMet: null, extra: 0, extraMinutes: 0 };
   if (!sumMin) return { total: 0, rows, minutes: 0, avgMet: null, extra: 0, extraMinutes: 0 };
   const avgMet = rows.reduce((t, r) => t + r.met * r.minutes, 0) / sumMin;
-  const real = s.startedAt && endAt ? (endAt - s.startedAt) / 60000 : 0;
+  const real = calActiveMinutes(s, sumMin, endAt);
   const extraMinutes = real > sumMin ? real - sumMin : 0;
   const extra = calKcal(avgMet, extraMinutes, b, cfg);
   const total = rows.reduce((t, r) => t + r.kcal, 0) + extra;
