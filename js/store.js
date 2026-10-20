@@ -45,7 +45,9 @@ function normalizeSet(x, i) {
     hintWeight: x?.hintWeight ?? '',
     hintReps: x?.hintReps ?? '',
     duration: Math.max(0, Number(x?.duration) || 0),
-    targetDuration: Math.max(1, Number(x?.targetDuration) || 30)
+    targetDuration: Math.max(1, Number(x?.targetDuration) || 30),
+    speed: x?.speed ?? '',
+    incline: x?.incline ?? ''
   };
 }
 function normalizeSession(s) {
@@ -180,20 +182,20 @@ const COVER_DIR = DATA.COVER_DIR || 'assets/exercises/img/';
 const COVER_EXT = DATA.COVER_EXT || 'webp';
 const COVER_KEY = 'gym.coverIndex';
 const COVER_RECHECK_MS = 5 * 60 * 1000;
-let coverFound = new Set((lsRead(COVER_KEY, {})?.found || []).map(Number));
+let coverFound = new Set((lsRead(COVER_KEY, {})?.found || []).map(String));
 let coverCheckedAt = 0, coverProbe = null;
 
 const coverNumber = def => (def && COVERS[def.id]) || null;
 const coverFile = n => `${COVER_DIR}${String(n).padStart(2, '0')}.${COVER_EXT}`;
 function coverPath(def) { const n = coverNumber(def); return n ? coverFile(n) : ''; }
-function coverExists(def) { const n = coverNumber(def); return Boolean(n && coverFound.has(n)); }
+function coverExists(def) { const n = coverNumber(def); return Boolean(n && coverFound.has(String(n))); }
 
 /* Comprueba qué portadas hay en el repositorio. Devuelve true si algo ha cambiado. */
 function probeCovers({ force = false } = {}) {
   if (coverProbe) return coverProbe;
   if (!force && Date.now() - coverCheckedAt < COVER_RECHECK_MS) return Promise.resolve(false);
   if (!('fetch' in window) || location.protocol === 'file:') return Promise.resolve(false);
-  const nums = [...new Set(Object.values(COVERS).map(Number).filter(n => n > 0))];
+  const nums = [...new Set(Object.values(COVERS).filter(Boolean).map(String))];
   const next = new Set(coverFound);
   let reached = false;
   const check = async n => {
@@ -211,7 +213,7 @@ function probeCovers({ force = false } = {}) {
     coverCheckedAt = Date.now();
     const changed = next.size !== coverFound.size || [...next].some(n => !coverFound.has(n));
     coverFound = next;
-    lsWrite(COVER_KEY, { found: [...next].sort((a, b) => a - b), checkedAt: coverCheckedAt });
+    lsWrite(COVER_KEY, { found: [...next].sort(), checkedAt: coverCheckedAt });
     return changed;
   })();
   return coverProbe;

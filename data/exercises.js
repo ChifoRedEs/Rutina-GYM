@@ -7,7 +7,7 @@ window.GYM_DATA.CATALOG_VERSION = 2;
 window.GYM_DATA.GROUPS = {
   "empuje": {
     "label": "Empuje",
-    "color": "#f59e0b",
+    "color": "#ef4444",
     "sub": "Pecho, hombro y tríceps"
   },
   "traccion": {
@@ -24,9 +24,24 @@ window.GYM_DATA.GROUPS = {
     "label": "Core",
     "color": "#8b5cf6",
     "sub": "Abdomen, lumbar, estabilidad y suelo pélvico"
+  },
+  "cardio": {
+    "label": "Cardio",
+    "color": "#eab308",
+    "sub": "Cinta, elíptica, bicicleta, remo y escaleras"
   }
 };
-window.GYM_DATA.SUBGROUPS = {"empuje":["Pecho","Hombro","Tríceps"],"traccion":["Espalda","Trapecio","Deltoides posterior","Bíceps"],"pierna":["Cuádriceps","Glúteo y cadena posterior","Femoral","Gemelos","Aductores / Abductores"],"core":["Abdomen","Lumbar","Estabilidad","Pelvis / suelo pélvico"]};
+/* Máquinas de cardio: qué se registra en cada serie además del tiempo.
+ * speed.pace = true → el ritmo se escribe como min:seg cada 500 m. incline = true → admite % de inclinación. */
+window.GYM_DATA.CARDIO_TYPES = {
+  "cinta":          { "label": "Cinta de correr",     "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 }, "incline": true },
+  "eliptica":       { "label": "Elíptica",            "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 } },
+  "bici-estatica":  { "label": "Bicicleta estática",  "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
+  "bici-reclinada": { "label": "Bicicleta reclinada", "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
+  "remo":           { "label": "Máquina de remo",     "speed": { "label": "Ritmo",     "unit": "min/500 m", "ph": "2:15", "pace": true } },
+  "escaleras":      { "label": "Máquina de escaleras","speed": { "label": "Pisos",     "unit": "pisos/min", "ph": "8",    "max": 30 } }
+};
+window.GYM_DATA.SUBGROUPS = {"empuje":["Pecho","Hombro","Tríceps"],"traccion":["Espalda","Trapecio","Deltoides posterior","Bíceps"],"pierna":["Cuádriceps","Glúteo y cadena posterior","Femoral","Gemelos","Aductores / Abductores"],"core":["Abdomen","Lumbar","Estabilidad","Pelvis / suelo pélvico"],"cardio":["Cardio"]};
 window.GYM_DATA.EQUIP = {"maquina":"Máquina","libre":"Peso libre","calistenia":"Peso corporal"};
 /* Ejercicios que cambiaron de grupo en la versión 2 del catálogo. Si el usuario había
  * editado su ficha, se le actualiza el grupo y la zona sin tocar el resto de sus cambios. */
@@ -134,5 +149,11 @@ window.GYM_DATA.EXERCISES = [
   {"id":"core-kegel-rapido","name":"Kegel: contracciones rápidas","group":"core","subgroup":"Pelvis / suelo pélvico","equip":"calistenia","primary":"Suelo pélvico","secondary":"Pelvis","restSeconds":30,"targetRepsMin":5,"targetRepsMax":15,"targetRIR":3,"increment":0,"tracking":"time","tutorialUrl":"","externalUrl":"","instructions":"Realiza contracciones breves y suaves del suelo pélvico, dejando que el músculo se relaje entre cada repetición. No contengas la respiración.","notes":"Si hay dolor, tensión o dificultad para relajar, consulta a un profesional sanitario."},
   {"id":"core-kegel-escalonado","name":"Kegel: contracción escalonada","group":"core","subgroup":"Pelvis / suelo pélvico","equip":"calistenia","primary":"Suelo pélvico","secondary":"Pelvis","restSeconds":45,"targetRepsMin":4,"targetRepsMax":8,"targetRIR":3,"increment":0,"tracking":"time","tutorialUrl":"","externalUrl":"","instructions":"Aumenta gradualmente la intensidad de la contracción hasta un nivel cómodo y después reduce progresivamente. Prioriza control y relajación.","notes":"La calidad de la contracción es más importante que la intensidad máxima."},
   {"id":"core-respiracion-diafragmatica-pelvica","name":"Respiración diafragmática y relajación pélvica","group":"core","subgroup":"Pelvis / suelo pélvico","equip":"calistenia","primary":"Pelvis","secondary":"Suelo pélvico","restSeconds":30,"targetRepsMin":5,"targetRepsMax":10,"targetRIR":3,"increment":0,"tracking":"time","tutorialUrl":"","externalUrl":"","instructions":"Respira lentamente dejando que abdomen y caja torácica se expandan. Busca una sensación de relajación del suelo pélvico durante la inspiración y evita realizar contracciones forzadas.","notes":"Ejercicio de control y relajación, no de fuerza máxima."},
-  {"id":"core-clamshell","name":"Clamshell","group":"core","subgroup":"Pelvis / suelo pélvico","equip":"calistenia","primary":"Pelvis","secondary":"Glúteo medio","restSeconds":45,"targetRepsMin":10,"targetRepsMax":20,"targetRIR":2,"increment":0,"tracking":"time","tutorialUrl":"","externalUrl":"","instructions":"Tumbado de lado con las rodillas flexionadas, abre la rodilla superior sin girar la pelvis.","notes":""}
+  {"id":"core-clamshell","name":"Clamshell","group":"core","subgroup":"Pelvis / suelo pélvico","equip":"calistenia","primary":"Pelvis","secondary":"Glúteo medio","restSeconds":45,"targetRepsMin":10,"targetRepsMax":20,"targetRIR":2,"increment":0,"tracking":"time","tutorialUrl":"","externalUrl":"","instructions":"Tumbado de lado con las rodillas flexionadas, abre la rodilla superior sin girar la pelvis.","notes":""},
+  {"id":"cardio-cinta-de-correr","name":"Cinta de Correr","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Piernas y glúteos","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"cinta","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Camina, trota o corre. Registra velocidad e inclinación de cada bloque.","notes":""},
+  {"id":"cardio-eliptica","name":"Elíptica","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Piernas, glúteos y brazos","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"eliptica","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Movimiento continuo de bajo impacto con el cuerpo erguido.","notes":""},
+  {"id":"cardio-bicicleta-estatica","name":"Bicicleta Estática","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Cuádriceps y glúteos","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"bici-estatica","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Pedaleo con el torso erguido; ajusta el sillín a la altura de la cadera.","notes":""},
+  {"id":"cardio-bicicleta-reclinada","name":"Bicicleta Reclinada","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Cuádriceps y glúteos","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"bici-reclinada","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Pedaleo con la espalda apoyada; descarga la zona lumbar.","notes":""},
+  {"id":"cardio-maquina-de-remo","name":"Máquina de Remo","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Espalda, piernas y core","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"remo","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Empuja con las piernas, tira con la espalda y los brazos, y vuelve en orden inverso.","notes":""},
+  {"id":"cardio-maquina-de-escaleras","name":"Máquina de Escaleras","group":"cardio","subgroup":"Cardio","equip":"maquina","primary":"Cardiovascular","secondary":"Piernas y glúteos","restSeconds":60,"targetRepsMin":8,"targetRepsMax":12,"targetRIR":2,"increment":0,"tracking":"time","cardio":"escaleras","targetDuration":1200,"tutorialUrl":"","externalUrl":"","instructions":"Subida continua de escalones; evita apoyarte con todo el peso en las barras.","notes":""}
 ];

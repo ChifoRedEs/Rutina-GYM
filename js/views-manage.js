@@ -229,8 +229,8 @@ function caloriesCardHTML() {
     </div>
 
     <h3 style="margin-top:14px">Intensidad por defecto</h3>
-    ${lvl('maquina', 'Máquinas')}${lvl('libre', 'Peso libre')}${lvl('calistenia', 'Peso corporal')}
-    <p class="small muted">«Automática» deduce la intensidad del RIR que registras: 0–1 vigorosa, 2–3 moderada, 4 o más ligera. En la ficha de cada ejercicio puedes fijar una intensidad o un MET concreto.</p>
+    ${lvl('maquina', 'Máquinas')}${lvl('libre', 'Peso libre')}${lvl('calistenia', 'Peso corporal')}${lvl('cardio', 'Cardio (si no hay velocidad)')}
+    <p class="small muted">«Automática» deduce la intensidad del RIR que registras: 0–1 vigorosa, 2–3 moderada, 4 o más ligera. En el cardio, la velocidad (y la inclinación en la cinta) que registres tiene prioridad. En la ficha de cada ejercicio puedes fijar una intensidad o un MET concreto.</p>
     <div class="cal-preview small" id="calPreview" aria-live="polite"></div></div>`;
 }
 function bindCaloriesCard(scr) {

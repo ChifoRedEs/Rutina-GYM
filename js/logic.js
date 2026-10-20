@@ -73,13 +73,18 @@ function buildSets(base, prevEx, sug) {
     }, i);
   });
 }
+/* Cardio: un bloque por defecto (20 min) o los mismos bloques, velocidades e inclinaciones de la última vez. */
+function buildCardioSets(def, base) {
+  if (base?.sets?.length) return base.sets.map((p, i) => normalizeSet({ type: 'working', targetDuration: p.targetDuration, speed: p.speed, incline: p.incline }, i));
+  return [normalizeSet({ type: 'working', targetDuration: num(def.targetDuration) || 1200 }, 0)];
+}
 function makeSessionExercise(def, ref, copyFrom = null) {
   const prev = lastPerformance(def.id, ref);
   const sug = suggestion(def, prev?.exercise);
   const base = copyFrom || prev?.exercise || null;
   return {
     id: def.id, name: def.name, primary: def.primary || '', secondary: def.secondary || '', subgroup: def.subgroup || '', equip: def.equip || '',
-    restSeconds: num(def.restSeconds) ?? 90, notes: '', sets: buildSets(base, prev?.exercise, sug)
+    restSeconds: num(def.restSeconds) ?? 90, notes: '', sets: def.cardio ? buildCardioSets(def, base) : buildSets(base, prev?.exercise, sug)
   };
 }
 function newSession({ date, group, name, defs, copyFrom = null }) {

@@ -15,10 +15,12 @@ const CAL_MET = {
   calistenia: { light: 3.8, moderate: 5.5, vigorous: 8.0 },
   tiempo:     { light: 2.3, moderate: 3.0, vigorous: 4.0 }
 };
+const CARDIO_TYPES = (window.GYM_DATA || {}).CARDIO_TYPES || {};
+CAL_MET.cardio = { light: 4.0, moderate: 6.0, vigorous: 8.5 }; // sin velocidad registrada
 const CAL_RANGES = { age: [10, 100], weight: [30, 300], height: [100, 250], bodyFat: [3, 60] };
 const CAL_DEFAULTS = {
   body: { sex: '', age: '', weight: '', height: '', bodyFat: '' },
-  calc: { mode: 'gross', metRef: 'standard', secPerRep: 3, epoc: 0, intensity: { maquina: 'auto', libre: 'auto', calistenia: 'auto' } }
+  calc: { mode: 'gross', metRef: 'standard', secPerRep: 3, epoc: 0, intensity: { maquina: 'auto', libre: 'auto', calistenia: 'auto', cardio: 'auto' } }
 };
 
 function calBodyRaw() { return Object.assign({}, CAL_DEFAULTS.body, settings().body || {}); }
@@ -56,7 +58,8 @@ function calKcalPerMetKgH(b = calBody(), cfg = calConfig()) {
 }
 
 const calIsTimed = def => (typeof isIsometricExercise === 'function' ? isIsometricExercise(def) : (def?.tracking === 'time' || def?.isometric === true));
-const calTable = def => CAL_MET[calIsTimed(def) ? 'tiempo' : (CAL_MET[def?.equip] ? def.equip : 'libre')];
+const calIsCardio = def => Boolean(def?.cardio && CARDIO_TYPES[def.cardio]);
+const calTable = def => CAL_MET[calIsCardio(def) ? 'cardio' : calIsTimed(def) ? 'tiempo' : (CAL_MET[def?.equip] ? def.equip : 'libre')];
 
 /* Intensidad automática: RIR medio de las series hechas (o el RIR objetivo de la ficha). */
 function calAutoLevel(def, sets = []) {
@@ -68,7 +71,7 @@ function calAutoLevel(def, sets = []) {
 function calExerciseMet(def, sets = [], cfg = calConfig()) {
   const own = num(def?.met);
   if (own !== null && own >= 1 && own <= 15) return { met: own, level: 'custom' };
-  let level = CAL_LEVELS[def?.intensity] ? def.intensity : cfg.intensity[def?.equip];
+  let level = CAL_LEVELS[def?.intensity] ? def.intensity : cfg.intensity[calIsCardio(def) ? 'cardio' : def?.equip];
   if (!CAL_LEVELS[level]) level = calAutoLevel(def, sets);
   return { met: calTable(def)[level], level };
 }
@@ -78,6 +81,69 @@ function calKcal(met, minutes, b = calBody(), cfg = calConfig()) {
   const kcal = cfg.mode === 'net' ? Math.max(0, met - 1) * base : met * base;
   return kcal * (1 + (Number(cfg.epoc) || 0) / 100);
 }
+
+
+/* ---------- Cardio: MET a partir de la velocidad (y la inclinación en la cinta) ----------
+ * Cinta: ecuaciones ACSM de caminar y correr (VO2 = 0,1·v + 1,8·v·pendiente + 3,5 caminando;
+ *        0,2·v + 0,9·v·pendiente + 3,5 corriendo, con v en m/min), mezcladas entre 6 y 8 km/h.
+ * Bicicletas, elíptica, escaleras: curvas aproximadas del Compendio de Actividades Físicas.
+ * Remo: el ritmo por 500 m se convierte en vatios (W = 2,80 / (s por metro)³) y de ahí a MET.
+ * Son aproximaciones: una máquina concreta puede marcar otra cosa. */
+const CAL_CARDIO_CURVES = {
+  'eliptica': [[4, 3.5], [8, 5.0], [11, 7.0], [14, 9.0]],
+  'bici-estatica': [[8, 3.0], [16, 4.0], [19, 6.0], [22, 8.0], [25.6, 10.0], [30, 12.0]],
+  'bici-reclinada': [[8, 3.0], [16, 4.0], [19, 6.0], [22, 8.0], [25.6, 10.0], [30, 12.0]],
+  'escaleras': [[2, 3.0], [5, 6.0], [8, 9.0], [12, 12.0], [16, 14.0]]
+};
+const CAL_ROW_WATTS = [[25, 2.8], [50, 3.5], [100, 7.0], [150, 8.5], [200, 12.0], [250, 14.0]];
+function calInterp(pts, x) {
+  if (x <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (x <= pts[i][0]) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+  }
+  return pts[pts.length - 1][1];
+}
+function calTreadmillMet(kmh, inclinePct) {
+  const S = kmh * 1000 / 60, G = Math.min(0.4, Math.max(0, (num(inclinePct) || 0) / 100));
+  const walk = (0.1 * S + 1.8 * S * G + 3.5) / 3.5, run = (0.2 * S + 0.9 * S * G + 3.5) / 3.5;
+  return kmh <= 6 ? walk : kmh >= 8 ? run : walk + (run - walk) * (kmh - 6) / 2;
+}
+/* Lo escrito en velocidad/ritmo → número válido (km/h, pisos/min o segundos por 500 m), o null. */
+function calSpeedValue(def, raw) {
+  const t = CARDIO_TYPES[def?.cardio]; if (!t) return null;
+  const txt = String(raw ?? '').trim(); if (!txt) return null;
+  if (t.speed.pace) {
+    const m = txt.match(/^(\d{1,2}):(\d{1,2})$/);
+    const sec = m ? Number(m[1]) * 60 + Number(m[2]) : (num(txt) !== null ? num(txt) * 60 : null);
+    return sec !== null && sec >= 60 && sec <= 600 ? sec : null;
+  }
+  const v = num(txt);
+  return v !== null && v > 0 && v <= (t.speed.max || 60) ? v : null;
+}
+/* MET de una serie de cardio según su velocidad e inclinación (null si no hay velocidad válida). */
+function calCardioSetMet(def, x) {
+  const v = calSpeedValue(def, x.speed); if (v === null) return null;
+  let met;
+  if (def.cardio === 'cinta') met = calTreadmillMet(v, x.incline);
+  else if (def.cardio === 'remo') { const p = v / 500; met = calInterp(CAL_ROW_WATTS, 2.8 / (p * p * p)); }
+  else met = calInterp(CAL_CARDIO_CURVES[def.cardio], v);
+  return Math.min(15, Math.max(1.5, met));
+}
+/* Cardio: cada serie es un bloque de tiempo con su propio MET (se pueden hacer intervalos). El descanso entre bloques no cuenta. */
+function calCardioKcal(e, def, cfg, b) {
+  const done = (e.sets || []).filter(x => x.completed);
+  const own = num(def.met), hasOwn = own !== null && own >= 1 && own <= 15, fb = calExerciseMet(def, e.sets, cfg);
+  let secs = 0, metSecs = 0, kcal = 0, anySpeed = false;
+  for (const x of done) {
+    const t = Number(x.duration) || Number(x.targetDuration) || 0, sm = hasOwn ? null : calCardioSetMet(def, x);
+    if (sm !== null) anySpeed = true;
+    const met = hasOwn ? own : (sm ?? fb.met);
+    secs += t; metSecs += met * t; if (b.weight) kcal += calKcal(met, t / 60, b, cfg);
+  }
+  return { kcal: b.weight ? kcal : null, minutes: secs / 60, met: secs ? metSecs / secs : fb.met, level: hasOwn ? 'custom' : anySpeed ? 'speed' : fb.level };
+}
+/* Texto de la intensidad de un resultado de calExerciseKcal. */
+const calLevelText = r => (r.level === 'custom' || r.level === 'speed') ? `MET ${fmtNum(Math.round(r.met * 10) / 10)}` : `intensidad ${CAL_LEVELS[r.level].toLowerCase()}`;
 
 /* Segundos que dura un ejercicio: series hechas + el descanso que sigue a cada una. */
 function calExerciseSeconds(e, def = exerciseById(e.id) || e, cfg = calConfig()) {
@@ -90,7 +156,9 @@ function calExerciseSeconds(e, def = exerciseById(e.id) || e, cfg = calConfig())
 }
 /* Calorías de un ejercicio de una sesión: { kcal, minutes, met, level } (kcal = null si falta el peso). */
 function calExerciseKcal(e, cfg = calConfig(), b = calBody()) {
-  const def = exerciseById(e.id) || e, secs = calExerciseSeconds(e, def, cfg), m = calExerciseMet(def, e.sets, cfg);
+  const def = exerciseById(e.id) || e;
+  if (calIsCardio(def)) return calCardioKcal(e, def, cfg, b);
+  const secs = calExerciseSeconds(e, def, cfg), m = calExerciseMet(def, e.sets, cfg);
   return { kcal: b.weight ? calKcal(m.met, secs / 60, b, cfg) : null, minutes: secs / 60, met: m.met, level: m.level };
 }
 /* Calorías de una sesión.

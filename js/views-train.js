@@ -331,7 +331,7 @@ function showSessionSummary(s) {
           <div class="kpi"><b>${dur ? formatDuration(dur) : '–'}</b><span>duración</span></div>
           <div class="kpi"><b>${r.avgMet ? fmtNum(round(r.avgMet, 1)) : '–'}</b><span>MET medio</span></div>
         </div>
-        <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${x.minutes < 1 ? '<1' : Math.round(x.minutes)} min · ${x.level === 'custom' ? 'MET ' + fmtNum(x.met) : CAL_LEVELS[x.level].toLowerCase()}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
+        <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${x.minutes < 1 ? '<1' : Math.round(x.minutes)} min · ${calLevelText(x).replace('intensidad ', '')}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
           ${r.extra > 0.5 ? `<div class="kcal-row"><span>Pausas y cambios entre ejercicios<small class="muted">${Math.round(r.extraMinutes)} min</small></span><b>${fmtNum(Math.round(r.extra))} kcal</b></div>` : ''}
           <div class="kcal-row total"><span>Total de la sesión</span><b>${fmtNum(Math.round(r.total))} kcal</b></div></div>
         <p class="small muted">Calculado con el método MET y los datos de tu Perfil. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
@@ -365,6 +365,7 @@ function parseHold(value) {
 function exerciseCard(s, e, idx, { update, redraw }) {
   const def = exerciseById(e.id) || e;
   const timed = isIsometricExercise(def);
+  const ct = calIsCardio(def) ? CARDIO_TYPES[def.cardio] : null, cardio = Boolean(ct);
   const imgs = exerciseImages(def), img = imgs[0] || null;
   const prev = timed ? null : lastPerformance(e.id, s);
   const sug = timed ? null : suggestion(def, prev?.exercise);
@@ -381,7 +382,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       <div class="ex-title"><h3>${esc(e.name)}</h3><span class="small muted">${esc(e.primary)}${e.secondary ? ', ' + esc(e.secondary) : ''}</span></div>
       <button type="button" class="icon-btn" data-exmenu aria-label="Opciones del ejercicio">⋯</button>
     </div>
-    <div class="ex-meta small"><span>${timed ? 'Series por tiempo · cronómetro individual' : `Objetivo ${min}–${max} reps · RIR ${rir}`}</span><span>Descanso ${formatClock(rest)}</span></div>
+    <div class="ex-meta small"><span>${cardio ? `Cardio · tiempo, ${ct.speed.label.toLowerCase()}${ct.incline ? ' e inclinación' : ''}` : timed ? 'Series por tiempo · cronómetro individual' : `Objetivo ${min}–${max} reps · RIR ${rir}`}</span><span>Descanso ${formatClock(rest)}</span></div>
     ${!timed ? (prev ? `<p class="small muted prev">Última vez (${esc(formatDateShort(prev.session.date))}): ${prev.exercise.sets.filter(isDoneWork).map(x => `${fmtNum(num(x.weight) || 0)}×${esc(x.reps)}`).join(' · ')}</p>` : '<p class="small muted prev">Primera vez con este ejercicio.</p>') : ''}
     ${!timed && sug ? `<p class="suggest ${sug.kind}">${esc(sug.text)}</p>` : ''}
     ${def.instructions || tutorial || external ? `<div class="ex-links">
@@ -407,8 +408,9 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       return;
     }
     const r = calExerciseKcal(e);
-    el.innerHTML = `<b>🔥 ≈ ${fmtNum(Math.round(r.kcal))} kcal</b> <span class="muted">· ${r.minutes < 1 ? '<1' : Math.round(r.minutes)} min · ${r.level === 'custom' ? 'MET ' + fmtNum(r.met) : 'intensidad ' + CAL_LEVELS[r.level].toLowerCase()}</span>`;
+    el.innerHTML = `<b>🔥 ≈ ${fmtNum(Math.round(r.kcal))} kcal</b> <span class="muted">· ${r.minutes < 1 ? '<1' : Math.round(r.minutes)} min · ${calLevelText(r)}</span>`;
   };
+  const cardioFields = x => !cardio ? '' : `<div class="cardio-fields${ct.incline ? '' : ' one'}"><label>${esc(ct.speed.label)} (${esc(ct.speed.unit)})<input data-f="speed" type="text" inputmode="${ct.speed.pace ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(x.speed)}" placeholder="${esc(ct.speed.ph)}" aria-label="${esc(ct.speed.label)} en ${esc(ct.speed.unit)}"></label>${ct.incline ? `<label>Inclinación (%)<input data-f="incline" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.incline)}" placeholder="0" aria-label="Inclinación en porcentaje"></label>` : ''}</div>`;
   const drawSets = () => { drawSetsBase(); drawKcal(); };
   const drawSetsBase = () => {
     let w = 0;
@@ -416,7 +418,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       const warm = x.type === 'warmup'; if (!warm) w++;
       return `<div class="set-row ${timed ? 'timed' : ''} ${warm ? 'warmup' : ''} ${x.completed ? 'done' : ''}" data-set="${esc(x.id)}" role="row">
         <button type="button" class="set-num" data-setmenu aria-label="${warm ? 'Serie de calentamiento' : `Serie ${w}`}: opciones">${warm ? 'C' : w}</button>
-        ${timed ? `<input class="hold-target" data-target-time value="${formatHold(x.targetDuration)}" placeholder="00:30" inputmode="numeric" aria-label="Tiempo deseado en minutos y segundos" ${x._running ? 'disabled' : ''}><span class="hold-clock" data-hold-clock>${formatHold(Math.max(0, x.targetDuration - x.duration))}</span><button type="button" class="btn small-btn" data-hold-toggle>${x._running ? 'Parar' : (x.duration > 0 && x.duration < x.targetDuration ? 'Continuar' : 'Iniciar')}</button><button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>` : `<input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
+        ${timed ? `<input class="hold-target" data-target-time value="${formatHold(x.targetDuration)}" placeholder="00:30" inputmode="numeric" aria-label="Tiempo deseado en minutos y segundos" ${x._running ? 'disabled' : ''}><span class="hold-clock" data-hold-clock>${formatHold(Math.max(0, x.targetDuration - x.duration))}</span><button type="button" class="btn small-btn" data-hold-toggle>${x._running ? 'Parar' : (x.duration > 0 && x.duration < x.targetDuration ? 'Continuar' : 'Iniciar')}</button><button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>${cardioFields(x)}` : `<input data-f="weight" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.weight)}" placeholder="${esc(x.hintWeight !== '' ? x.hintWeight : 'kg')}" aria-label="Peso en kg">
         <input data-f="reps" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.reps)}" placeholder="${esc(x.hintReps !== '' ? x.hintReps : 'reps')}" aria-label="Repeticiones">
         <input data-f="rir" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.rir)}" placeholder="${rir}" aria-label="RIR">
         <button type="button" class="check" data-check aria-pressed="${x.completed}" aria-label="Marcar serie como hecha">✓</button>`}</div>`;
@@ -504,7 +506,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
 
   $('[data-addset]', card).onclick = () => {
     const last = e.sets[e.sets.length - 1];
-    e.sets.push(normalizeSet({ type: 'working', duration: 0, targetDuration: 30, hintWeight: timed ? '' : (last ? (last.weight || last.hintWeight) : ''), hintReps: timed ? '' : (last ? (last.reps || last.hintReps) : '') }, e.sets.length));
+    e.sets.push(normalizeSet({ type: 'working', duration: 0, targetDuration: cardio ? (last?.targetDuration || 1200) : 30, speed: cardio && last ? last.speed : '', incline: cardio && last ? last.incline : '', hintWeight: timed ? '' : (last ? (last.weight || last.hintWeight) : ''), hintReps: timed ? '' : (last ? (last.reps || last.hintReps) : '') }, e.sets.length));
     saveSession(s); drawSets(); update();
     if (!timed) $$('.set-row input[data-f="weight"]', body).pop()?.focus();
   };

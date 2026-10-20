@@ -1,6 +1,6 @@
 /* Rutina Gym — portadas de los ejercicios del catálogo.
  *
- * Cada número es el nombre del archivo de su portada en assets/exercises/img/:
+ * Cada valor es el nombre del archivo de su portada en assets/exercises/img/ (los de cardio son «C-01» … «C-06»):
  *   1 → assets/exercises/img/01.webp, 2 → 02.webp … 98 → 98.webp
  *
  * Para añadir una portada basta con subir el archivo con su número a esa carpeta.
@@ -125,5 +125,12 @@ window.GYM_DATA.COVERS = {
   "core-kegel-rapido": 95, // 95 Kegel: contracciones rápidas
   "core-kegel-escalonado": 96, // 96 Kegel: contracción escalonada
   "core-respiracion-diafragmatica-pelvica": 97, // 97 Respiración diafragmática y relajación pélvica
-  "core-clamshell": 98 // 98 Clamshell
+  "core-clamshell": 98, // 98 Clamshell
+  /* Cardio (archivos C-01.webp … C-06.webp) */
+  "cardio-cinta-de-correr": "C-01", // C-01 Cinta de Correr
+  "cardio-eliptica": "C-02", // C-02 Elíptica
+  "cardio-bicicleta-estatica": "C-03", // C-03 Bicicleta Estática
+  "cardio-bicicleta-reclinada": "C-04", // C-04 Bicicleta Reclinada
+  "cardio-maquina-de-remo": "C-05", // C-05 Máquina de Remo
+  "cardio-maquina-de-escaleras": "C-06" // C-06 Máquina de Escaleras
 };

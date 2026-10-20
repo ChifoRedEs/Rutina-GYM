@@ -57,6 +57,12 @@ Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas
 - Progreso → Calorías: semana, mes, media y mejor sesión, con gráfica por sesión, semana o mes. «Ejercicios» es desplegable.
 - Los datos viajan en las copias de seguridad. Es una estimación, no una medición.
 
+**Cardio (categoría amarilla)**
+- Seis máquinas: cinta de correr, elíptica, bicicleta estática, bicicleta reclinada, remo y escaleras (portadas `C-01.webp` … `C-06.webp`).
+- Sus ejercicios se pueden añadir a cualquier sesión desde el selector de ejercicios (chip «Cardio»).
+- Cada serie es un bloque de tiempo con el mismo cronómetro de las planchas, más velocidad (cinta, elíptica y bicicletas en km/h; remo en min/500 m; escaleras en pisos/min) e inclinación (solo cinta).
+- Las kcal usan esos datos: ecuaciones ACSM en la cinta y curvas aproximadas del Compendio en el resto; sin velocidad se usa la intensidad por defecto. Se suman al total de la sesión como cualquier ejercicio.
+
 **Datos**
 - Copia de seguridad JSON (incluye imágenes y plantillas) y exportación CSV para Excel.
 - Restauración segura: valida la copia antes de tocar nada, descarga antes tus datos actuales y, si algo falla, lo deja todo como estaba.
