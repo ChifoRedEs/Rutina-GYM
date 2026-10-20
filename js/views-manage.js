@@ -2,7 +2,7 @@
 'use strict';
 
 /* ---------- progreso ---------- */
-let statsQuery = '';
+let statsQuery = '', statsExOpen = false, calMode = 'week';
 function viewStats() {
   setHeader('Progreso', 'Volumen, récords y evolución', false);
   const all = sessions();
@@ -28,9 +28,14 @@ function viewStats() {
       ${barChart(weeks.map(w => ({ label: formatDateShort(w.key), value: Math.round(w.volume), title: `Semana del ${formatDateShort(w.key)}: ${fmtNum(Math.round(w.volume))} kg en ${w.sessions} sesiones` })), { unit: 'kg' })}</div>
     <div class="card"><h3>Sesiones por grupo (30 días)</h3>
       ${byGroup.map(x => `<div class="hbar"><span>${esc(groupLabel(x.g))}</span><div><i style="width:${(x.n / maxG) * 100}%;background:${esc(groupColor(x.g))}"></i></div><b>${x.n}</b></div>`).join('')}</div>
-    <div class="card"><h3>Ejercicios</h3><p class="small muted">Toca uno para ver su evolución.</p>
+    ${caloriesStatsHTML()}
+    <details class="card fold" id="exFold" ${statsExOpen || statsQuery ? 'open' : ''}>
+      <summary><h3>Ejercicios</h3><span class="small muted">${prs.length} con series</span></summary>
+      <p class="small muted">Toca uno para ver su evolución.</p>
       <input id="statsSearch" type="search" placeholder="Buscar ejercicio" value="${esc(statsQuery)}" aria-label="Buscar ejercicio">
-      <div class="list" id="prList"></div></div>`);
+      <div class="list" id="prList"></div></details>`);
+  bindCaloriesStats();
+  $('#exFold').addEventListener('toggle', ev => { statsExOpen = ev.target.open; });
 
   const draw = () => {
     const q = statsQuery.toLowerCase();
@@ -41,6 +46,37 @@ function viewStats() {
     $$('#prList [data-ex]').forEach(b => b.onclick = () => go(`stats/${encodeURIComponent(b.dataset.ex)}`));
   };
   $('#statsSearch').oninput = e => { statsQuery = e.target.value.trim(); draw(); };
+  draw();
+}
+
+/* ---------- progreso: calorías ---------- */
+function caloriesStatsHTML() {
+  if (!calReady()) {
+    return `<div class="card"><h3>Calorías</h3><p class="small muted">Añade tu peso corporal en Perfil para estimar las calorías de cada sesión, semana y mes.</p><button type="button" class="btn primary full" id="calGoProfile">Ir a Perfil</button></div>`;
+  }
+  const st = calStats();
+  return `<div class="card" id="calStats"><h3>Calorías</h3>
+    <p class="small muted">Estimación con el método MET y los datos de tu Perfil, recalculada con tu peso actual.</p>
+    <div class="kpis">
+      <div class="kpi"><b>${fmtNum(Math.round(st.week))} kcal</b><span>esta semana</span></div>
+      <div class="kpi"><b>${fmtNum(Math.round(st.month))} kcal</b><span>este mes</span></div>
+      <div class="kpi"><b>${st.count ? fmtNum(Math.round(st.avg)) + ' kcal' : '–'}</b><span>media por sesión</span></div>
+      <div class="kpi"><b>${st.best ? fmtNum(Math.round(st.best.kcal)) + ' kcal' : '–'}</b><span>${st.best ? `mejor sesión (${esc(formatDateShort(st.best.s.date))})` : 'mejor sesión'}</span></div>
+    </div>
+    <div class="chips" id="calChips">${[['session', 'Por sesión'], ['week', 'Por semana'], ['month', 'Por mes']].map(([k, l]) => `<button type="button" class="chip ${calMode === k ? 'on' : ''}" data-cal-mode="${k}">${l}</button>`).join('')}</div>
+    <div id="calChart"></div>
+    <p class="small muted">Acumulado: ${fmtNum(Math.round(st.total))} kcal en ${st.count} ${st.count === 1 ? 'sesión' : 'sesiones'}.</p></div>`;
+}
+function bindCaloriesStats() {
+  $('#calGoProfile')?.addEventListener('click', () => go('profile'));
+  const box = $('#calChart'); if (!box) return;
+  const titles = { session: 'Últimas 12 sesiones', week: 'Últimas 12 semanas', month: 'Últimos 12 meses' };
+  const draw = () => {
+    const bars = calSeries(calMode, 12).map(x => ({ label: x.label, value: Math.round(x.kcal), title: x.title }));
+    box.innerHTML = `<p class="small muted" style="margin:4px 0 0">${titles[calMode]}</p>${barChart(bars, { unit: 'kcal' })}`;
+    $$('[data-cal-mode]').forEach(b => b.classList.toggle('on', b.dataset.calMode === calMode));
+  };
+  $$('[data-cal-mode]').forEach(b => b.onclick = () => { calMode = b.dataset.calMode; draw(); });
   draw();
 }
 

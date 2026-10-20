@@ -254,6 +254,7 @@ function viewWorkout({ id }) {
       <div class="row"><b id="progressText"></b><span class="small muted" id="durText"></span></div>
       <div class="progress"><div id="progressFill"></div></div>
       <div class="row small muted"><span id="volText"></span>${done ? '<span class="badge ok">Finalizado</span>' : ''}</div>
+      <div class="row small"><b id="kcalText"></b></div>
     </div>
     <div id="exerciseList"></div>
     <div class="card">
@@ -273,6 +274,11 @@ function viewWorkout({ id }) {
     $('#volText').textContent = `${fmtNum(Math.round(sessionVolume(s)))} kg de volumen`;
     const dur = s.startedAt ? (s.finishedAt || Date.now()) - s.startedAt : null;
     $('#durText').textContent = dur ? `⏱ ${formatDuration(dur)}` : 'Empieza al marcar la primera serie';
+    const kt = $('#kcalText');
+    if (kt) {
+      const k = calReady() ? calSessionKcal(s, calConfig(), calBody(), s.finishedAt || Date.now()).total : null;
+      kt.textContent = k ? `🔥 ≈ ${fmtNum(Math.round(k))} kcal en la sesión` : '';
+    }
   };
   const tick = setInterval(() => { if ($('#durText')) update(); }, 1000);
   onLeave(() => clearInterval(tick));
@@ -303,10 +309,37 @@ function viewWorkout({ id }) {
       if (s.startedAt && !s.finishedAt) s.finishedAt = Date.now();
       saveSession(s); stopRest(); setWakeLock(false);
       const dur = sessionDuration(s);
-      toast(`Entrenamiento guardado${dur ? ` · ${formatDuration(dur)}` : ''}`);
+      if (completedSets(s)) { if ((await showSessionSummary(s)) === 'profile') return go('profile', { replace: true }); }
+      else toast(`Entrenamiento guardado${dur ? ` · ${formatDuration(dur)}` : ''}`);
     } else saveSession(s);
     go('', { replace: true });
   };
+}
+
+/* Ventana al finalizar: calorías de la sesión y desglose por ejercicio. Resuelve al cerrarla. */
+function showSessionSummary(s) {
+  return new Promise(resolve => {
+    const b = calBody(), cfg = calConfig(), dur = sessionDuration(s);
+    let content;
+    if (!b.weight) {
+      content = `<p class="muted">Para calcular las calorías necesito tu peso corporal. Añádelo en Perfil y las próximas sesiones mostrarán su gasto.</p>
+        <button type="button" class="btn primary full" data-profile>Ir a Perfil</button>`;
+    } else {
+      const r = calSessionKcal(s, cfg, b), rows = r.rows.filter(x => x.minutes > 0);
+      content = `<div class="kcal-hero"><b>${fmtNum(Math.round(r.total))}</b><span>kcal quemadas (estimación)</span></div>
+        <div class="kpis">
+          <div class="kpi"><b>${dur ? formatDuration(dur) : '–'}</b><span>duración</span></div>
+          <div class="kpi"><b>${r.avgMet ? fmtNum(round(r.avgMet, 1)) : '–'}</b><span>MET medio</span></div>
+        </div>
+        <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${x.minutes < 1 ? '<1' : Math.round(x.minutes)} min · ${x.level === 'custom' ? 'MET ' + fmtNum(x.met) : CAL_LEVELS[x.level].toLowerCase()}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
+          ${r.extra > 0.5 ? `<div class="kcal-row"><span>Pausas y cambios entre ejercicios<small class="muted">${Math.round(r.extraMinutes)} min</small></span><b>${fmtNum(Math.round(r.extra))} kcal</b></div>` : ''}
+          <div class="kcal-row total"><span>Total de la sesión</span><b>${fmtNum(Math.round(r.total))} kcal</b></div></div>
+        <p class="small muted">Calculado con el método MET y los datos de tu Perfil. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
+    }
+    const { root } = openSheet(`<div class="sheet-head"><h3>Sesión finalizada</h3><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
+      ${content}<button type="button" class="btn ${b.weight ? 'primary' : ''} full" data-close style="margin-top:10px">Cerrar</button>`, { onClose: () => resolve() });
+    $('[data-profile]', root)?.addEventListener('click', () => { closeSheet(); resolve('profile'); });
+  });
 }
 
 function isIsometricExercise(def) {
@@ -359,11 +392,25 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       <div class="set-row set-head ${timed ? 'timed' : ''}" role="row"><span>Serie</span>${timed ? '<span>Deseado</span><span>Restante</span><span></span><span></span>' : '<span>kg</span><span>Reps</span><span>RIR</span><span></span>'}</div>
       <div class="set-body"></div>
     </div>
+    <p class="ex-kcal hidden" data-kcal aria-live="polite"></p>
     <div class="ex-foot"><button type="button" class="btn small-btn" data-addset>+ Serie</button><button type="button" class="btn small-btn" data-rest>Descanso ${formatClock(rest)}</button></div>
     <input class="ex-note" data-note value="${esc(e.notes)}" placeholder="Notas del ejercicio" aria-label="Notas del ejercicio">`;
 
   const body = $('.set-body', card);
-  const drawSets = () => {
+  const drawKcal = () => {
+    const el = $('[data-kcal]', card); if (!el) return;
+    if (!e.sets.some(x => x.completed)) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if (!calReady()) {
+      el.innerHTML = '🔥 Indica tu peso en <button type="button" class="link" data-profile>Perfil</button> para ver las calorías.';
+      $('[data-profile]', el).onclick = () => { flushSaves(); go('profile'); };
+      return;
+    }
+    const r = calExerciseKcal(e);
+    el.innerHTML = `<b>🔥 ≈ ${fmtNum(Math.round(r.kcal))} kcal</b> <span class="muted">· ${r.minutes < 1 ? '<1' : Math.round(r.minutes)} min · ${r.level === 'custom' ? 'MET ' + fmtNum(r.met) : 'intensidad ' + CAL_LEVELS[r.level].toLowerCase()}</span>`;
+  };
+  const drawSets = () => { drawSetsBase(); drawKcal(); };
+  const drawSetsBase = () => {
     let w = 0;
     body.innerHTML = e.sets.map(x => {
       const warm = x.type === 'warmup'; if (!warm) w++;
@@ -376,7 +423,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
     }).join('');
     $$('.set-row', body).forEach(row => {
       const x = e.sets.find(z => z.id === row.dataset.set); if (!x) return;
-      $$('input', row).forEach(input => input.oninput = () => { x[input.dataset.f] = input.value.trim(); scheduleSave(s); update(); });
+      $$('input', row).forEach(input => input.oninput = () => { x[input.dataset.f] = input.value.trim(); scheduleSave(s); update(); drawKcal(); });
       if (timed) {
         const targetInput = $('[data-target-time]', row);
         targetInput.onchange = () => {

@@ -328,3 +328,22 @@ body:has(.rest-bar.show) .toast{bottom:calc(var(--nav-h) + env(safe-area-inset-b
 .set-row.timed .btn{min-width:0;padding:8px 4px}
 
 .cal-preview{margin-top:12px;padding:11px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);line-height:1.5}
+
+.ex-kcal{margin:10px 0 2px;padding:9px 11px;border-radius:10px;background:var(--warn-soft);color:var(--text);font-size:13.5px}
+.ex-kcal.hidden{display:none}
+.kcal-hero{text-align:center;padding:10px 0 14px}
+.kcal-hero b{display:block;font-size:44px;line-height:1.1;letter-spacing:-.02em}
+.kcal-hero span{font-size:13px;color:var(--muted)}
+.kcal-list{margin-bottom:10px}
+.kcal-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14.5px}
+.kcal-row>span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.kcal-row small{font-size:12px}
+.kcal-row b{white-space:nowrap}
+.kcal-row.total{border-bottom:0;font-weight:700;font-size:15.5px}
+.fold>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary h3{margin:0}
+.fold>summary::after{content:"›";font-size:22px;line-height:1;color:var(--muted);transition:transform .15s;margin-left:2px}
+.fold[open]>summary::after{transform:rotate(90deg)}
+.fold>summary .small{margin-left:auto}
+.fold[open]>summary{margin-bottom:8px}

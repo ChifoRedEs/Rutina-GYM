@@ -52,6 +52,9 @@ Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas
 - Peso, altura, edad, sexo y % de grasa (opcional) para estimar el gasto con el método MET.
 - Tipo de gasto (bruto o neto), referencia de 1 MET (estándar o según tu metabolismo basal), segundos por repetición y EPOC opcional.
 - Intensidad por defecto según el material y, en la ficha de cada ejercicio, intensidad o MET propio.
+- Cada ejercicio muestra sus kcal en cuanto marcas una serie (empieza el descanso); la cabecera de la sesión suma el total en vivo.
+- Al finalizar la sesión aparece una ventana con las kcal totales y el desglose por ejercicio.
+- Progreso → Calorías: semana, mes, media y mejor sesión, con gráfica por sesión, semana o mes. «Ejercicios» es desplegable.
 - Los datos viajan en las copias de seguridad. Es una estimación, no una medición.
 
 **Datos**

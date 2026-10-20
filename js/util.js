@@ -1,7 +1,7 @@
 /* Rutina Gym — utilidades comunes (sin dependencias). */
 'use strict';
 
-const APP_VERSION = '3.6.0';
+const APP_VERSION = '3.7.0';
 const DATA = window.GYM_DATA || {};
 const GROUPS = DATA.GROUPS || {};
 const SUBGROUPS = DATA.SUBGROUPS || {};

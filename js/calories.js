@@ -55,7 +55,7 @@ function calKcalPerMetKgH(b = calBody(), cfg = calConfig()) {
   return 1;
 }
 
-const calIsTimed = def => def?.tracking === 'time' || def?.isometric === true;
+const calIsTimed = def => (typeof isIsometricExercise === 'function' ? isIsometricExercise(def) : (def?.tracking === 'time' || def?.isometric === true));
 const calTable = def => CAL_MET[calIsTimed(def) ? 'tiempo' : (CAL_MET[def?.equip] ? def.equip : 'libre')];
 
 /* Intensidad automática: RIR medio de las series hechas (o el RIR objetivo de la ficha). */
@@ -79,29 +79,69 @@ function calKcal(met, minutes, b = calBody(), cfg = calConfig()) {
   return kcal * (1 + (Number(cfg.epoc) || 0) / 100);
 }
 
-/* Segundos que dura un ejercicio: series hechas + descansos entre ellas. */
+/* Segundos que dura un ejercicio: series hechas + el descanso que sigue a cada una. */
 function calExerciseSeconds(e, def = exerciseById(e.id) || e, cfg = calConfig()) {
+  const rest = num(e.restSeconds) ?? num(def?.restSeconds) ?? 90;
   const done = (e.sets || []).filter(x => x.completed);
   if (!done.length) return 0;
   const timed = calIsTimed(def);
   const work = done.reduce((t, x) => t + (timed ? (Number(x.duration) || Number(x.targetDuration) || 0) : (num(x.reps) || 0) * cfg.secPerRep), 0);
-  return work + (done.length - 1) * (num(def?.restSeconds) ?? 90);
+  return work + done.length * rest; // cada serie hecha arranca su descanso
 }
 /* Calorías de un ejercicio de una sesión: { kcal, minutes, met, level } (kcal = null si falta el peso). */
 function calExerciseKcal(e, cfg = calConfig(), b = calBody()) {
   const def = exerciseById(e.id) || e, secs = calExerciseSeconds(e, def, cfg), m = calExerciseMet(def, e.sets, cfg);
   return { kcal: b.weight ? calKcal(m.met, secs / 60, b, cfg) : null, minutes: secs / 60, met: m.met, level: m.level };
 }
-/* Calorías de una sesión. Si tiene hora de inicio y fin se usa la duración real y el gasto se reparte entre ejercicios. */
-function calSessionKcal(s, cfg = calConfig(), b = calBody()) {
+/* Calorías de una sesión.
+ * rows: gasto de cada ejercicio (series + descansos entre series, igual que en su tarjeta).
+ * extra: si la sesión duró más que la suma de sus ejercicios (cambios de máquina, pausas), ese tiempo se suma
+ * al MET medio de la sesión. endAt permite calcularlo en vivo (por defecto, la hora de fin guardada). */
+function calSessionKcal(s, cfg = calConfig(), b = calBody(), endAt = s.finishedAt) {
   const rows = s.exercises.map(e => Object.assign({ id: e.id, name: (exerciseById(e.id) || e).name }, calExerciseKcal(e, cfg, b)));
   const sumMin = rows.reduce((t, r) => t + r.minutes, 0);
-  if (!b.weight || !sumMin) return { total: b.weight ? 0 : null, rows, minutes: sumMin, avgMet: null, realDuration: false };
+  if (!b.weight) return { total: null, rows, minutes: sumMin, avgMet: null, extra: 0, extraMinutes: 0 };
+  if (!sumMin) return { total: 0, rows, minutes: 0, avgMet: null, extra: 0, extraMinutes: 0 };
   const avgMet = rows.reduce((t, r) => t + r.met * r.minutes, 0) / sumMin;
-  const real = sessionDuration(s) ? sessionDuration(s) / 60000 : 0;
-  const realDuration = real > sumMin;
-  const minutes = realDuration ? real : sumMin;
-  const total = realDuration ? calKcal(avgMet, minutes, b, cfg) : rows.reduce((t, r) => t + r.kcal, 0);
-  if (realDuration) { const sum = rows.reduce((t, r) => t + r.kcal, 0) || 1; rows.forEach(r => { r.kcal = r.kcal * total / sum; }); }
-  return { total, rows, minutes, avgMet, realDuration };
+  const real = s.startedAt && endAt ? (endAt - s.startedAt) / 60000 : 0;
+  const extraMinutes = real > sumMin ? real - sumMin : 0;
+  const extra = calKcal(avgMet, extraMinutes, b, cfg);
+  const total = rows.reduce((t, r) => t + r.kcal, 0) + extra;
+  return { total, rows, minutes: sumMin + extraMinutes, avgMet, extra, extraMinutes };
+}
+
+/* Series para las gráficas de Progreso: modo 'session' (últimas n sesiones), 'week' (n semanas) o 'month' (n meses). */
+function calSeries(mode, n = 12) {
+  const cfg = calConfig(), b = calBody();
+  const list = sessions().filter(s => completedSets(s) > 0).map(s => ({ s, kcal: calSessionKcal(s, cfg, b).total || 0 }));
+  if (mode === 'session') {
+    return list.slice(0, n).reverse().map(({ s, kcal }) => ({ key: s.id, label: formatDateShort(s.date), kcal, sessions: 1, title: `${s.name} · ${formatDateLong(s.date)}: ${fmtNum(Math.round(kcal))} kcal` }));
+  }
+  const buckets = [], now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    if (mode === 'week') {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7) - i * 7);
+      buckets.push({ key: dateStr(d), label: formatDateShort(dateStr(d)), kcal: 0, sessions: 0, title: '' });
+    } else {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({ key: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: MONTHS_SHORT[d.getMonth()], kcal: 0, sessions: 0, title: '' });
+    }
+  }
+  const map = new Map(buckets.map(x => [x.key, x]));
+  for (const { s, kcal } of list) {
+    let key;
+    if (mode === 'week') { const d = parseDate(s.date); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); key = dateStr(d); } else key = s.date.slice(0, 7);
+    const x = map.get(key); if (x) { x.kcal += kcal; x.sessions++; }
+  }
+  buckets.forEach(x => { x.title = `${mode === 'week' ? 'Semana del ' + x.label : x.label}: ${fmtNum(Math.round(x.kcal))} kcal en ${x.sessions} ${x.sessions === 1 ? 'sesión' : 'sesiones'}`; });
+  return buckets;
+}
+/* Resumen para las tarjetas de Progreso. */
+function calStats() {
+  const cfg = calConfig(), b = calBody();
+  const list = sessions().filter(s => completedSets(s) > 0).map(s => ({ s, kcal: calSessionKcal(s, cfg, b).total || 0 }));
+  const week = calSeries('week', 1)[0], month = calSeries('month', 1)[0];
+  const best = list.reduce((m, x) => (!m || x.kcal > m.kcal ? x : m), null);
+  const total = list.reduce((t, x) => t + x.kcal, 0);
+  return { week: week.kcal, month: month.kcal, avg: list.length ? total / list.length : 0, total, count: list.length, best };
 }
