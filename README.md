@@ -1,4 +1,4 @@
-# Rutina Gym 3.2
+# Rutina Gym 4.0
 
 Aplicación web para registrar entrenamientos de gimnasio desde el móvil o el ordenador. Funciona sin servidor, sin conexión y se puede instalar como app.
 
@@ -16,7 +16,7 @@ css/
 data/
 icons/
 js/
-assets/
+assets/        (imágenes en assets/exercises/img/, vídeos en assets/exercises/video/)
 ```
 
 3. En el repositorio: **Settings → Pages → Deploy from a branch → main / (root)**.
@@ -26,15 +26,6 @@ No hace falta Node, npm ni ningún backend.
 ### Tus datos se conservan
 
 Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas esta versión en la **misma dirección** de GitHub Pages, la app encontrará tus sesiones, ejercicios personalizados e imágenes de la v2.4 y las seguirá usando. Aun así, descarga una copia desde **Ajustes → Descargar copia** antes de actualizar, por si acaso. Si cambias de dirección o de navegador, restaura esa copia en **Ajustes → Restaurar una copia**.
-
-## Vídeos animados de los ejercicios
-
-Cada ejercicio puede tener un vídeo que se abre en una ventana emergente desde la sesión (botón **🎬 Vídeo**).
-
-1. Sube el archivo a `assets/exercises/video/` con la misma numeración que las portadas: `01.mp4`, `02.mp4`, `03.mp4`… y, para cardio, `C-01.mp4`, `C-02.mp4`…
-2. Nada más: la app comprueba al abrirse qué vídeos existen y muestra el botón solo en esos ejercicios.
-
-Los vídeos no se guardan en el modo sin conexión de forma automática; hace falta conexión para verlos. Formato recomendado: MP4 (H.264), vertical, pocos segundos y de poco peso.
 
 ## Qué hace
 
@@ -48,6 +39,7 @@ Los vídeos no se guardan en el modo sin conexión de forma automática; hace fa
 - Duración de la sesión (desde la primera serie marcada hasta «Finalizar»).
 - Temporizador de descanso exacto aunque se bloquee la pantalla, con sonido, vibración, ±15 s, pausa y notificación opcional. Sigue visible al cambiar de pantalla y sobrevive a recargar la página.
 - Pantalla siempre encendida durante la sesión (si el navegador lo permite).
+- Vídeo animado de cada ejercicio en una ventana emergente (botón **🎬 Vídeo** en la tarjeta del ejercicio), para los ejercicios que ya tienen vídeo.
 
 **Progreso**
 - Volumen semanal de las últimas 12 semanas, sesiones por grupo y duración media.
@@ -109,22 +101,59 @@ No hay que tocar ningún archivo más. Al abrirse, la app comprueba qué número
 - Si escribes una ruta en «Otra ruta de imagen en el repositorio» de la ficha, sustituye a la portada numerada de ese ejercicio.
 - Las consultas a los números que aún no existen aparecen como 404 en la consola del navegador: es normal.
 
+## Vídeos animados
+
+Cada ejercicio puede tener un vídeo corto que se abre en una ventana emergente desde la sesión. El sistema es el mismo que el de las portadas: se sube el archivo y aparece solo.
+
+### Cómo añadir un vídeo
+
+Sube el archivo a:
+
+```text
+assets/exercises/video/NN.mp4     (01.mp4, 02.mp4 … 98.mp4)
+assets/exercises/video/C-NN.mp4   (C-01.mp4 … C-06.mp4, para cardio)
+```
+
+La numeración es **la misma que la de las portadas** (`data/covers.js` y la lista de ejercicios): el vídeo `02.mp4` es el del ejercicio 02, Aperturas / Pec Deck en máquina. No hay que tocar ningún otro archivo.
+
+### Qué ve el usuario
+
+- En la tarjeta del ejercicio, dentro de la sesión, aparece el botón **🎬 Vídeo** solo si ese ejercicio tiene su archivo. Los que no lo tienen no muestran nada (nunca hay un botón que lleve a un vídeo inexistente).
+- Al pulsarlo se abre una ventana emergente con el vídeo en bucle, sin sonido, con controles y adaptado a la pantalla (también en vertical). Se cierra con ✕, tocando fuera de la ventana o con Escape.
+- Si el vídeo no se puede cargar, la ventana muestra un aviso en lugar de un recuadro negro.
+- Es independiente del botón **▶ Tutorial** (enlace de YouTube de la ficha): pueden convivir los dos.
+
+### Cómo se detectan
+
+- Al abrirse, la app pregunta con una petición `HEAD` (sin descargar el vídeo) qué números tienen archivo en `assets/exercises/video/`, igual que hace con las portadas.
+- El resultado se guarda en el navegador (`gym.videoIndex`) y los botones se muestran u ocultan sin repintar la sesión, así que no se pierde nada de lo que estés escribiendo.
+- La primera vez que subes un vídeo nuevo, el botón puede tardar unos segundos en aparecer. Se vuelve a comprobar al volver a la app pasados 5 minutos. Para forzarlo, cierra y abre la app.
+- Las consultas a los vídeos que aún no existen aparecen como 404 en la consola del navegador: es normal.
+
+### Recomendaciones para los archivos
+
+- Formato **MP4 con vídeo H.264**: es el que reproducen todos los móviles y navegadores.
+- Vertical (por ejemplo 720 × 1280) y de pocos segundos: un vídeo de 10 s a 720 × 1280 ocupa unos 3,6 MB.
+- El nombre distingue mayúsculas y ceros: `05.mp4`, no `5.mp4` ni `05.MP4`.
+- Para cambiar un vídeo, sube otro con el mismo nombre. GitHub Pages puede tardar unos minutos en servir el nuevo.
+- Los vídeos **no se guardan para el modo sin conexión**: hace falta conexión para verlos. El resto de la app sigue funcionando sin ella.
+
 ## Estructura del código
 
 | Archivo | Contenido |
 |---|---|
 | `data/exercises.js` | Catálogo base de ejercicios y grupos |
-| `data/covers.js` | Número de portada de cada ejercicio (`assets/exercises/img/NN.webp`) |
+| `data/covers.js` | Número de cada ejercicio: sirve para su portada (`assets/exercises/img/NN.webp`) y su vídeo (`assets/exercises/video/NN.mp4`) |
 | `js/util.js` | Utilidades, fechas, avisos y diálogos |
-| `js/store.js` | Almacenamiento (localStorage + IndexedDB para imágenes) |
+| `js/store.js` | Almacenamiento (localStorage + IndexedDB para imágenes) y detección de portadas y vídeos del repositorio |
 | `js/images.js` | Redimensionado de imágenes |
 | `js/logic.js` | Volumen, 1RM estimado, récords y sugerencias de progresión |
 | `js/timer.js` | Temporizador de descanso, sonido, vibración, pantalla encendida |
 | `js/charts.js` | Gráficas SVG |
 | `js/backup.js` | Copias de seguridad, CSV y borrado |
-| `js/views-train.js` | Calendario, selección, sesión e historial |
+| `js/views-train.js` | Calendario, selección, sesión (incluida la ventana de vídeo) e historial |
 | `js/views-manage.js` | Progreso, ajustes, biblioteca y editor |
-| `js/app.js` | Navegación y arranque |
+| `js/app.js` | Navegación, arranque y comprobación en segundo plano de portadas y vídeos |
 | `sw.js` | Service worker (funcionamiento sin conexión) |
 
 ### Publicar cambios
@@ -143,11 +172,30 @@ No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar se
 
 - **iPhone:** Safari no permite vibración. Las notificaciones solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4 o posterior).
 - **Pantalla bloqueada:** el navegador puede pausar la página. El temporizador sigue contando bien y avisa al volver; para un aviso con la pantalla bloqueada, activa la notificación en Ajustes (mejor en Android).
+- **Vídeos:** no se guardan para el modo sin conexión; sin internet el botón **🎬 Vídeo** sigue visible pero el vídeo no cargará (se muestra un aviso). Al ser archivos pesados, súbelos en MP4 corto y comprimido.
 - **Almacenamiento:** Safari puede borrar los datos de webs que no se usan en varias semanas. Instalar la app en la pantalla de inicio lo evita; aun así, haz copias.
 
 ## Nota sobre ejercicios de suelo pélvico
 
 Los ejercicios de Kegel se incluyen como opciones de control y fortalecimiento suave. No se recomienda practicarlos interrumpiendo el flujo de orina. Si hay dolor, tensión persistente, síntomas pélvicos o dificultad para relajar el suelo pélvico, conviene consultar con un profesional sanitario.
+
+## Novedades 4.0
+
+**Vídeos animados por ejercicio**
+- Nuevo botón **🎬 Vídeo** en la tarjeta de cada ejercicio de la sesión, que abre el vídeo animado en una ventana emergente (bucle, sin sonido, con controles y adaptado a pantallas verticales).
+- Nueva carpeta `assets/exercises/video/` para subir los vídeos: `01.mp4`, `02.mp4`… y `C-01.mp4`… para cardio. Misma numeración que las portadas.
+- Detección automática: al subir un vídeo, su ejercicio muestra el botón sin tocar código ni listas. Los ejercicios sin vídeo no muestran nada.
+- Primer vídeo incluido: **02 · Aperturas / Pec Deck en máquina** (`assets/exercises/video/02.mp4`).
+- Si un vídeo no carga, aparece un aviso claro en lugar de una ventana vacía.
+- El botón se muestra u oculta sin repintar la sesión, por lo que no interrumpe lo que estés anotando.
+
+**Cambios técnicos**
+- `js/store.js`: nuevas funciones `videoFile`, `videoPath`, `videoExists` y `probeVideos`, calcadas del sistema de portadas (índice guardado en `gym.videoIndex`).
+- `js/views-train.js`: nuevas `openVideo` y `syncVideoButtons`, y botón en `exerciseCard`.
+- `js/app.js`: `refreshCovers` también comprueba los vídeos.
+- `css/app.css`: estilos de la ventana de vídeo.
+- Versión de la app y de la caché del service worker subidas a 4.0.0 para que los móviles descarguen lo nuevo.
+- Tus datos, sesiones e imágenes no cambian: no hace falta migración.
 
 ## Novedades 3.2
 
