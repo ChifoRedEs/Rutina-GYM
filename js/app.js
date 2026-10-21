@@ -84,11 +84,13 @@ function applyTheme() {
   $('meta[name="theme-color"]')?.setAttribute('content', colors.bg || (dark ? '#141824' : '#f5f7fb'));
 }
 
-/* Comprueba en segundo plano qué portadas hay en assets/exercises/img/ y, si cambió algo,
+/* Comprueba en segundo plano qué portadas (assets/exercises/img/) y vídeos (assets/exercises/video/) hay y, si cambió algo,
  * repinta las pantallas donde no se está escribiendo nada (nunca una sesión en curso ni el editor). */
 async function refreshCovers(opts) {
   let changed = false;
   try { changed = await probeCovers(opts); } catch { return; }
+  /* Los vídeos no repintan nada: solo muestran u ocultan los botones «Vídeo» ya dibujados. */
+  probeVideos(opts).then(() => syncVideoButtons()).catch(() => {});
   const [r, a] = currentParts();
   if (changed && (['', 'history', 'stats', 'profile', 'settings', 'day'].includes(r || '') || (r === 'library' && !a))) render();
 }

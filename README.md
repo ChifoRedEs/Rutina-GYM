@@ -27,6 +27,15 @@ No hace falta Node, npm ni ningún backend.
 
 Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas esta versión en la **misma dirección** de GitHub Pages, la app encontrará tus sesiones, ejercicios personalizados e imágenes de la v2.4 y las seguirá usando. Aun así, descarga una copia desde **Ajustes → Descargar copia** antes de actualizar, por si acaso. Si cambias de dirección o de navegador, restaura esa copia en **Ajustes → Restaurar una copia**.
 
+## Vídeos animados de los ejercicios
+
+Cada ejercicio puede tener un vídeo que se abre en una ventana emergente desde la sesión (botón **🎬 Vídeo**).
+
+1. Sube el archivo a `assets/exercises/video/` con la misma numeración que las portadas: `01.mp4`, `02.mp4`, `03.mp4`… y, para cardio, `C-01.mp4`, `C-02.mp4`…
+2. Nada más: la app comprueba al abrirse qué vídeos existen y muestra el botón solo en esos ejercicios.
+
+Los vídeos no se guardan en el modo sin conexión de forma automática; hace falta conexión para verlos. Formato recomendado: MP4 (H.264), vertical, pocos segundos y de poco peso.
+
 ## Qué hace
 
 **Entrenar**

@@ -55,6 +55,23 @@ function openTutorial(def) {
     <a class="btn full" href="${esc(url)}" target="_blank" rel="noopener">Abrir en YouTube</a>`);
 }
 
+/* Ventana emergente con el vídeo animado del ejercicio (assets/exercises/video/NN.mp4). */
+function openVideo(def) {
+  const src = imageSrc(videoPath(def));
+  if (!src) return;
+  const { root } = openSheet(`<div class="sheet-head"><h3>${esc(def.name)}</h3><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
+    <div class="video-pop"><video src="${esc(src)}" autoplay loop muted playsinline controls preload="auto" aria-label="Vídeo: ${esc(def.name)}"></video></div>
+    <p class="small muted video-err hidden">No se ha podido cargar el vídeo. Comprueba la conexión.</p>`);
+  const v = $('video', root);
+  v.addEventListener('error', () => { v.classList.add('hidden'); $('.video-err', root).classList.remove('hidden'); });
+  v.play?.().catch(() => { /* si el navegador bloquea el autoplay, queda el botón de reproducir */ });
+}
+/* Muestra los botones «Vídeo» solo de los ejercicios cuyo archivo existe, sin repintar la sesión. */
+function syncVideoButtons() {
+  $$('[data-video]').forEach(b => { const d = exerciseById(b.dataset.video); b.classList.toggle('hidden', !(d && videoExists(d))); });
+  $$('.ex-links').forEach(l => l.classList.toggle('hidden', ![...l.children].some(c => !c.classList.contains('hidden'))));
+}
+
 function sortDefs(defs) {
   const g = GROUP_ORDER(), eq = Object.keys(EQUIP), idx = (a, v) => { const i = a.indexOf(v); return i < 0 ? 99 : i; };
   const pos = new Map(exerciseList().map((x, i) => [x.id, i]));
@@ -384,7 +401,8 @@ function exerciseCard(s, e, idx, { update, redraw }) {
     <div class="ex-meta small"><span>${cardio ? `Cardio · tiempo, ${ct.speed.label.toLowerCase()}${ct.incline ? ' e inclinación' : ''}` : timed ? 'Series por tiempo · cronómetro individual' : `Objetivo ${min}–${max} reps · RIR ${rir}`}</span><span>Descanso ${formatClock(rest)}</span></div>
     ${!timed ? (prev ? `<p class="small muted prev">Última vez (${esc(formatDateShort(prev.session.date))}): ${prev.exercise.sets.filter(isDoneWork).map(x => `${fmtNum(num(x.weight) || 0)}×${esc(x.reps)}`).join(' · ')}</p>` : '<p class="small muted prev">Primera vez con este ejercicio.</p>') : ''}
     ${!timed && sug ? `<p class="suggest ${sug.kind}">${esc(sug.text)}</p>` : ''}
-    ${def.instructions || tutorial || external ? `<div class="ex-links">
+    ${def.instructions || tutorial || external || coverNumber(def) ? `<div class="ex-links ${!def.instructions && !tutorial && !external && !videoExists(def) ? 'hidden' : ''}">
+      ${coverNumber(def) ? `<button type="button" class="btn small-btn ${videoExists(def) ? '' : 'hidden'}" data-video="${esc(def.id)}">🎬 Vídeo</button>` : ''}
       ${def.instructions ? `<details><summary>Cómo se hace</summary><p class="small exercise-instructions">${esc(def.instructions)}</p></details>` : ''}
       ${tutorial ? '<button type="button" class="btn small-btn" data-tutorial>▶ Tutorial</button>' : ''}
       ${external ? `<a class="btn small-btn" href="${esc(external)}" target="_blank" rel="noopener">Más información</a>` : ''}</div>` : ''}
@@ -514,6 +532,7 @@ function exerciseCard(s, e, idx, { update, redraw }) {
   $('[data-note]', card).oninput = ev => { e.notes = ev.target.value; scheduleSave(s); };
   $('[data-gallery]', card)?.addEventListener('click', () => openGallery(imgs, 0, e.name));
   $('[data-tutorial]', card)?.addEventListener('click', () => openTutorial(def));
+  $('[data-video]', card)?.addEventListener('click', () => openVideo(def));
   $('[data-exmenu]', card).onclick = async () => {
     const items = [];
     if (idx > 0) items.push({ key: 'up', label: 'Subir' });

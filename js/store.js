@@ -222,6 +222,50 @@ function probeCovers({ force = false } = {}) {
   return coverProbe;
 }
 
+/* ---------- vídeos del repositorio (assets/exercises/video/NN.mp4) ----------
+ * Misma numeración que las portadas: 02.mp4 es el vídeo del ejercicio 02, C-01.mp4 el del cardio C-01.
+ * Se detectan igual que las portadas (HEAD al abrir la app) y se recuerdan para el modo sin conexión.
+ * Subir 03.mp4 a esa carpeta basta para que el ejercicio 03 muestre su botón «Vídeo». */
+const VIDEO_DIR = DATA.VIDEO_DIR || 'assets/exercises/video/';
+const VIDEO_EXT = DATA.VIDEO_EXT || 'mp4';
+const VIDEO_KEY = 'gym.videoIndex';
+const VIDEO_RECHECK_MS = 5 * 60 * 1000;
+let videoFound = new Set((lsRead(VIDEO_KEY, {})?.found || []).map(String));
+let videoCheckedAt = 0, videoProbe = null;
+
+const videoFile = n => `${VIDEO_DIR}${String(n).padStart(2, '0')}.${VIDEO_EXT}`;
+function videoPath(def) { const n = coverNumber(def); return n ? videoFile(n) : ''; }
+function videoExists(def) { const n = coverNumber(def); return Boolean(n && videoFound.has(String(n))); }
+
+/* Comprueba qué vídeos hay en el repositorio. Devuelve true si algo ha cambiado. */
+function probeVideos({ force = false } = {}) {
+  if (videoProbe) return videoProbe;
+  if (!force && Date.now() - videoCheckedAt < VIDEO_RECHECK_MS) return Promise.resolve(false);
+  if (!('fetch' in window) || location.protocol === 'file:') return Promise.resolve(false);
+  const nums = [...new Set(Object.values(COVERS).filter(Boolean).map(String))];
+  const next = new Set(videoFound);
+  let reached = false;
+  const check = async n => {
+    try {
+      const r = await fetch(videoFile(n), { method: 'HEAD', cache: 'no-store' });
+      reached = true;
+      if (r.ok) next.add(n); else if (r.status === 404) next.delete(n);
+    } catch { /* sin conexión: se conserva lo que ya se sabía */ }
+  };
+  videoProbe = (async () => {
+    const queue = nums.slice();
+    await Promise.all(Array.from({ length: 6 }, async () => { while (queue.length) await check(queue.shift()); }));
+    videoProbe = null;
+    if (!reached) return false;
+    videoCheckedAt = Date.now();
+    const changed = next.size !== videoFound.size || [...next].some(n => !videoFound.has(n));
+    videoFound = next;
+    lsWrite(VIDEO_KEY, { found: [...next].sort(), checkedAt: videoCheckedAt });
+    return changed;
+  })();
+  return videoProbe;
+}
+
 /* Imagen del repositorio: la ruta escrita a mano en la ficha o, si no hay, la portada numerada. */
 function repoImage(def) {
   const manual = imageSrc(def?.imagePath || '');
