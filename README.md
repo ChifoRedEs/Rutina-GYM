@@ -1,4 +1,4 @@
-# Rutina Gym 4.0
+# Rutina Gym 4.0.1
 
 Aplicación web para registrar entrenamientos de gimnasio desde el móvil o el ordenador. Funciona sin servidor, sin conexión y se puede instalar como app.
 
@@ -119,7 +119,7 @@ La numeración es **la misma que la de las portadas** (`data/covers.js` y la lis
 ### Qué ve el usuario
 
 - En la tarjeta del ejercicio, dentro de la sesión, aparece el botón **🎬 Vídeo** solo si ese ejercicio tiene su archivo. Los que no lo tienen no muestran nada (nunca hay un botón que lleve a un vídeo inexistente).
-- Al pulsarlo se abre una ventana emergente con el vídeo en bucle, sin sonido, con controles y adaptado a la pantalla (también en vertical). Se cierra con ✕, tocando fuera de la ventana o con Escape.
+- Al pulsarlo se abre una ventana emergente con el vídeo en bucle, **con sonido y volumen al 100 %**, con controles y adaptado a la pantalla (también en vertical). El volumen general lo sigue controlando el móvil con sus botones. Se cierra con ✕, tocando fuera de la ventana o con Escape.
 - Si el vídeo no se puede cargar, la ventana muestra un aviso en lugar de un recuadro negro.
 - Es independiente del botón **▶ Tutorial** (enlace de YouTube de la ficha): pueden convivir los dos.
 
@@ -179,10 +179,17 @@ No cambies los `id` de `data/exercises.js`: el historial los usa para enlazar se
 
 Los ejercicios de Kegel se incluyen como opciones de control y fortalecimiento suave. No se recomienda practicarlos interrumpiendo el flujo de orina. Si hay dolor, tensión persistente, síntomas pélvicos o dificultad para relajar el suelo pélvico, conviene consultar con un profesional sanitario.
 
+## Novedades 4.0.1
+
+- Los vídeos ahora empiezan **con sonido** y con el volumen del reproductor al 100 %, sin tener que activar el altavoz a mano.
+- Si el navegador no permitiera iniciar con sonido, el vídeo arranca sin él y aparece un aviso que indica tocar el icono del altavoz.
+- El volumen real depende del volumen del móvil o del ordenador; la app no puede subirlo por encima de lo que tengas puesto. En iPhone el volumen del reproductor no se puede cambiar desde la app, solo con los botones del teléfono.
+- Versión de la app y de la caché subidas a 4.0.1.
+
 ## Novedades 4.0
 
 **Vídeos animados por ejercicio**
-- Nuevo botón **🎬 Vídeo** en la tarjeta de cada ejercicio de la sesión, que abre el vídeo animado en una ventana emergente (bucle, sin sonido, con controles y adaptado a pantallas verticales).
+- Nuevo botón **🎬 Vídeo** en la tarjeta de cada ejercicio de la sesión, que abre el vídeo animado en una ventana emergente (bucle, con sonido, con controles y adaptado a pantallas verticales).
 - Nueva carpeta `assets/exercises/video/` para subir los vídeos: `01.mp4`, `02.mp4`… y `C-01.mp4`… para cardio. Misma numeración que las portadas.
 - Detección automática: al subir un vídeo, su ejercicio muestra el botón sin tocar código ni listas. Los ejercicios sin vídeo no muestran nada.
 - Primer vídeo incluido: **02 · Aperturas / Pec Deck en máquina** (`assets/exercises/video/02.mp4`).

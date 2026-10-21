@@ -60,11 +60,20 @@ function openVideo(def) {
   const src = imageSrc(videoPath(def));
   if (!src) return;
   const { root } = openSheet(`<div class="sheet-head"><h3>${esc(def.name)}</h3><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
-    <div class="video-pop"><video src="${esc(src)}" autoplay loop muted playsinline controls preload="auto" aria-label="Vídeo: ${esc(def.name)}"></video></div>
+    <div class="video-pop"><video src="${esc(src)}" loop playsinline controls preload="auto" aria-label="Vídeo: ${esc(def.name)}"></video></div>
+    <p class="small muted video-hint hidden">Tu navegador ha iniciado el vídeo sin sonido. Toca el icono del altavoz para activarlo.</p>
     <p class="small muted video-err hidden">No se ha podido cargar el vídeo. Comprueba la conexión.</p>`);
   const v = $('video', root);
   v.addEventListener('error', () => { v.classList.add('hidden'); $('.video-err', root).classList.remove('hidden'); });
-  v.play?.().catch(() => { /* si el navegador bloquea el autoplay, queda el botón de reproducir */ });
+  /* Con sonido y volumen al máximo: al abrirse tras tocar el botón, el navegador lo permite. */
+  v.muted = false; v.volume = 1;
+  const p = v.play?.();
+  p?.catch(() => {
+    /* Si el navegador no permite empezar con sonido, arranca sin él (el aviso explica cómo activarlo). */
+    v.muted = true;
+    v.play?.().catch(() => { /* queda el botón de reproducir */ });
+    $('.video-hint', root).classList.remove('hidden');
+  });
 }
 /* Muestra los botones «Vídeo» solo de los ejercicios cuyo archivo existe, sin repintar la sesión. */
 function syncVideoButtons() {
