@@ -221,16 +221,19 @@ function caloriesCardHTML() {
     <p class="small muted">El peso es imprescindible. Sexo, edad y altura afinan tu metabolismo basal; si indicas el % de grasa se usa una fórmula más precisa.</p>
 
     <h3 style="margin-top:14px">Cómo se calcula</h3>
-    <label>Tipo de gasto<select data-cal="mode">${opt('gross', cfg.mode, 'Bruto: total durante el ejercicio')}${opt('net', cfg.mode, 'Neto: solo el extra por entrenar')}</select></label>
+    <label>Tipo de gasto<select data-cal="mode">${opt('gross', cfg.mode, 'Bruto: incluye tu metabolismo basal')}${opt('net', cfg.mode, 'Neto: solo el extra por entrenar')}</select></label>
     <label>Referencia de 1 MET<select data-cal="metRef">${opt('standard', cfg.metRef, 'Estándar (1 kcal por kg y hora)')}${opt('personal', cfg.metRef, 'Personalizada con mi metabolismo basal')}</select></label>
     <div class="grid-2">
-      <label>Segundos por repetición<input type="text" inputmode="decimal" data-cal="secPerRep" value="${esc(cfg.secPerRep)}" placeholder="3"></label>
+      <label>Segundos por repetición (tiempo teórico de la serie)<input type="text" inputmode="decimal" data-cal="secPerRep" value="${esc(cfg.secPerRep)}" placeholder="3"></label>
       <label>Efecto postejercicio (EPOC)<select data-cal="epoc">${opt(0, cfg.epoc, 'No sumar')}${opt(5, cfg.epoc, '+5 %')}${opt(10, cfg.epoc, '+10 %')}</select></label>
     </div>
 
+    <label>Ajuste personal (%)<input type="text" inputmode="numeric" data-cal="scale" value="${esc(cfg.scale)}" placeholder="100"></label>
+    <p class="small muted">Multiplica todas las estimaciones (50–200 %). Si tu reloj marca de forma sistemática más o menos calorías que la app, súbelo o bájalo. No afecta a las kcal que escribes desde una máquina.</p>
+
     <h3 style="margin-top:14px">Intensidad por defecto</h3>
-    ${lvl('maquina', 'Máquinas')}${lvl('libre', 'Peso libre')}${lvl('calistenia', 'Peso corporal')}${lvl('cardio', 'Cardio (si no hay velocidad)')}
-    <p class="small muted">«Automática» deduce la intensidad del RIR que registras: 0–1 vigorosa, 2–3 moderada, 4 o más ligera. En el cardio, la velocidad (y la inclinación en la cinta) que registres tiene prioridad. En la ficha de cada ejercicio puedes fijar una intensidad o un MET concreto.</p>
+    ${lvl('cardio', 'Cardio sin velocidad y ejercicios por tiempo')}
+    <p class="small muted">Pesas y calistenia se calculan con la carga, el recorrido y las repeticiones de cada serie, no con una intensidad fija. En el cardio, las kcal de la máquina tienen prioridad, luego la velocidad (o la distancia) y la inclinación. En la ficha de cada ejercicio puedes ajustar el recorrido, el peso corporal que mueves, la intensidad o un MET propio.</p>
     <div class="cal-preview small" id="calPreview" aria-live="polite"></div></div>`;
 }
 function bindCaloriesCard(scr) {
@@ -238,10 +241,9 @@ function bindCaloriesCard(scr) {
   const refresh = () => {
     const b = calBody(), cfg = calConfig(), el = $('#calPreview', card);
     if (!b.weight) { el.innerHTML = '<span class="muted">Indica tu peso corporal para ver una estimación.</span>'; return; }
-    const bmr = calBMR(b), ref = calKcalPerMetKgH(b, cfg);
-    const hour = lv => Math.round(calKcal(CAL_MET.libre[lv], 60, b, cfg));
-    el.innerHTML = `<b>Con estos datos, 1 hora de pesas ≈</b> ${hour('light')} kcal (ligera) · ${hour('moderate')} kcal (moderada) · ${hour('vigorous')} kcal (vigorosa).<br>` +
-      `<span class="muted">1 MET = ${fmtNum(round(ref * b.weight, 1))} kcal/h.${bmr ? ` Metabolismo basal estimado: ${fmtNum(Math.round(bmr.kcal))} kcal/día (${bmr.method}).` : ' Añade altura y edad (o % de grasa) para calcular tu metabolismo basal.'}${cfg.metRef === 'personal' && !bmr ? ' La referencia personalizada necesita esos datos; mientras tanto se usa la estándar.' : ''}</span>`;
+    const ref = calReference(b, cfg), bmr = calBMR(b), kk = calKcalPerMetKgH(b, cfg);
+    el.innerHTML = `<b>Con estos datos:</b><br>· 1 serie de 10 repeticiones con 60 kg en el press de pecho en máquina ≈ ${fmtNum(round(ref.bench, 1))} kcal.<br>· 20 min de cinta a 8 km/h sin inclinación ≈ ${fmtNum(Math.round(ref.treadmill))} kcal.<br>` +
+      `<span class="muted">1 MET = ${fmtNum(round(kk * b.weight, 1))} kcal/h.${bmr ? ` Metabolismo basal estimado: ${fmtNum(Math.round(bmr.kcal))} kcal/día (${bmr.method}).` : ' Añade altura y edad (o % de grasa) para calcular tu metabolismo basal.'}${cfg.metRef === 'personal' && !bmr ? ' La referencia personalizada necesita esos datos; mientras tanto se usa la estándar.' : ''}</span>`;
   };
   $$('[data-body]', card).forEach(i => {
     const k = i.dataset.body;
@@ -263,6 +265,7 @@ function bindCaloriesCard(scr) {
     const save = loud => {
       const cfg = calConfig(); let v = i.value;
       if (k === 'secPerRep') { const n = num(v); if (n === null || n < 1 || n > 10) { if (loud) { toast('Pon entre 1 y 10 segundos por repetición.'); i.value = cfg.secPerRep; } return; } v = n; }
+      if (k === 'scale') { const n = num(v); if (n === null || n < 50 || n > 200) { if (loud) { toast('El ajuste debe estar entre 50 y 200 %.'); i.value = cfg.scale; } return; } v = n; }
       if (k === 'epoc') v = Number(v);
       setSetting('calc', Object.assign({}, cfg, { [k]: v })); refresh();
     };
@@ -343,9 +346,11 @@ function viewEditor({ id }) {
 
     <div class="card"><h3>Descanso</h3><label>Descanso entre series (segundos)<input id="exRest" type="number" inputmode="numeric" min="0" step="5" value="${esc(ex.restSeconds ?? 90)}"></label></div>
     <div class="card"><h3>Gasto calórico</h3>
-      <label>Intensidad de este ejercicio<select id="exIntensity"><option value="" ${!ex.intensity ? 'selected' : ''}>Según Ajustes (automática o por material)</option>${Object.entries(CAL_LEVELS).map(([k, l]) => `<option value="${k}" ${ex.intensity === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label>Recorrido del movimiento (cm, opcional)<input id="exRom" type="text" inputmode="decimal" value="${esc(ex.rom ?? '')}" placeholder="${Math.round(calRom(ex) * 100)} (estimado)"></label>
+      <label>Peso corporal que mueves (%, solo calistenia)<input id="exBw" type="text" inputmode="decimal" value="${esc(ex.bw ?? '')}" placeholder="${Math.round(calBwFraction(ex) * 100)} (estimado)"></label>
+      <label>Intensidad (solo cardio y ejercicios por tiempo)<select id="exIntensity"><option value="" ${!ex.intensity ? 'selected' : ''}>Según Ajustes</option>${Object.entries(CAL_LEVELS).map(([k, l]) => `<option value="${k}" ${ex.intensity === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label>MET propio (opcional)<input id="exMet" type="text" inputmode="decimal" value="${esc(ex.met ?? '')}" placeholder="Ej. 5,5"></label>
-      <p class="small muted">Si escribes un MET (entre 1 y 15), sustituye a la intensidad. Referencias: 3,5 pesas ligeras · 5 moderadas · 6 vigorosas · 8 calistenia intensa.</p></div>
+      <p class="small muted">Las pesas se calculan con carga × recorrido × repeticiones; el recorrido y el % de peso corporal afinan la estimación de este ejercicio. Un MET propio (1–15) sustituye al método y pasa a calcular con tiempo teórico.</p></div>
     <div class="card" id="exerciseGoals"><h3>Objetivos y progresión</h3>
       <div class="grid-2"><label>Reps mínimas<input id="exMin" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMin ?? 8)}"></label><label>Reps máximas<input id="exMax" type="number" inputmode="numeric" min="1" value="${esc(ex.targetRepsMax ?? 12)}"></label></div>
       <label>RIR objetivo<input id="exRIR" type="number" inputmode="numeric" min="0" max="10" value="${esc(ex.targetRIR ?? 1)}"></label>
@@ -409,7 +414,9 @@ function viewEditor({ id }) {
     if (!name || !primary) { toast('Escribe el nombre y el músculo principal.'); (name ? $('#exPrimary') : $('#exName')).focus(); return; }
     const tut = $('#exTutorial').value.trim(), ext = $('#exExternal').value.trim();
     if ((tut && !safeUrl(tut)) || (ext && !safeUrl(ext))) { toast('Revisa los enlaces: deben empezar por https://'); return; }
-    const metRaw = $('#exMet').value.trim(), metVal = num(metRaw);
+    const metRaw = $('#exMet').value.trim(), metVal = num(metRaw), romRaw = $('#exRom').value.trim(), romVal = num(romRaw), bwRaw = $('#exBw').value.trim(), bwVal = num(bwRaw);
+    if (romRaw && (romVal === null || romVal < 3 || romVal > 150)) { toast('El recorrido debe estar entre 3 y 150 cm.'); $('#exRom').focus(); return; }
+    if (bwRaw && (bwVal === null || bwVal < 0 || bwVal > 150)) { toast('El peso corporal que mueves debe estar entre 0 y 150 %.'); $('#exBw').focus(); return; }
     if (metRaw && (metVal === null || metVal < 1 || metVal > 15)) { toast('El MET debe estar entre 1 y 15.'); $('#exMet').focus(); return; }
     let min = Math.max(1, Math.round(num($('#exMin').value) || 8)), max = Math.max(1, Math.round(num($('#exMax').value) || 12));
     if (min > max) [min, max] = [max, min];
@@ -417,7 +424,7 @@ function viewEditor({ id }) {
       name, primary, group: $('#exGroup').value, subgroup: $('#exSubgroup').value, equip: $('#exEquip').value, tracking: $('#exTracking').value === 'time' ? 'time' : 'weight', secondary: $('#exSecondary').value.trim(),
       imagePath: $('#exImagePath').value.trim(), tutorialUrl: safeUrl(tut), externalUrl: safeUrl(ext),
       instructions: $('#exInstructions').value.trim(), notes: $('#exNotes').value.trim(),
-      intensity: $('#exIntensity').value, met: metRaw ? metVal : '',
+      intensity: $('#exIntensity').value, met: metRaw ? metVal : '', rom: romRaw ? romVal : '', bw: bwRaw ? bwVal : '',
       restSeconds: Math.max(0, Math.round(num($('#exRest').value) ?? 90)), targetRIR: Math.min(10, Math.max(0, Math.round(num($('#exRIR').value) ?? 1))),
       targetRepsMin: min, targetRepsMax: max, increment: Math.max(0, num($('#exInc').value) ?? 2.5)
     });

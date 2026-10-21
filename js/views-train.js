@@ -276,7 +276,7 @@ function viewWorkout({ id }) {
     $('#durText').textContent = dur ? `⏱ ${formatDuration(dur)}` : 'Empieza al marcar la primera serie';
     const kt = $('#kcalText');
     if (kt) {
-      const k = calReady() ? calSessionKcal(s, calConfig(), calBody(), s.finishedAt || Date.now()).total : null;
+      const k = calReady() ? calSessionKcal(s, calConfig(), calBody()).total : null;
       kt.textContent = k ? `🔥 ≈ ${fmtNum(Math.round(k))} kcal en la sesión` : '';
     }
   };
@@ -325,16 +325,15 @@ function showSessionSummary(s) {
       content = `<p class="muted">Para calcular las calorías necesito tu peso corporal. Añádelo en Perfil y las próximas sesiones mostrarán su gasto.</p>
         <button type="button" class="btn primary full" data-profile>Ir a Perfil</button>`;
     } else {
-      const r = calSessionKcal(s, cfg, b), rows = r.rows.filter(x => x.minutes > 0);
+      const r = calSessionKcal(s, cfg, b), rows = r.rows.filter(x => x.kcal > 0);
       content = `<div class="kcal-hero"><b>${fmtNum(Math.round(r.total))}</b><span>kcal quemadas (estimación)</span></div>
         <div class="kpis">
           <div class="kpi"><b>${dur ? formatDuration(dur) : '–'}</b><span>duración</span></div>
-          <div class="kpi"><b>${r.avgMet ? fmtNum(round(r.avgMet, 1)) : '–'}</b><span>MET medio</span></div>
+          <div class="kpi"><b>${r.sets}</b><span>series hechas</span></div>
         </div>
-        <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${x.minutes < 1 ? '<1' : Math.round(x.minutes)} min · ${calLevelText(x).replace('intensidad ', '')}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
-          ${r.extra > 0.5 ? `<div class="kcal-row"><span>Pausas y cambios entre ejercicios<small class="muted">${Math.round(r.extraMinutes)} min</small></span><b>${fmtNum(Math.round(r.extra))} kcal</b></div>` : ''}
+        <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${esc(calDetailText(x))}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
           <div class="kcal-row total"><span>Total de la sesión</span><b>${fmtNum(Math.round(r.total))} kcal</b></div></div>
-        <p class="small muted">Calculado con el método MET y los datos de tu Perfil. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
+        <p class="small muted">Calculado a partir de lo que has hecho en cada serie (carga, repeticiones y recorrido) y de los datos de tu Perfil; no depende del tiempo que ha durado la sesión. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
     }
     const { root } = openSheet(`<div class="sheet-head"><h3>Sesión finalizada</h3><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
       ${content}<button type="button" class="btn ${b.weight ? 'primary' : ''} full" data-close style="margin-top:10px">Cerrar</button>`, { onClose: () => resolve() });
@@ -408,9 +407,9 @@ function exerciseCard(s, e, idx, { update, redraw }) {
       return;
     }
     const r = calExerciseKcal(e);
-    el.innerHTML = `<b>🔥 ≈ ${fmtNum(Math.round(r.kcal))} kcal</b> <span class="muted">· ${r.minutes < 1 ? '<1' : Math.round(r.minutes)} min · ${calLevelText(r)}</span>`;
+    el.innerHTML = `<b>🔥 ≈ ${fmtNum(Math.round(r.kcal || 0))} kcal</b> <span class="muted">· ${calDetailText(r)}</span>`;
   };
-  const cardioFields = x => !cardio ? '' : `<div class="cardio-fields${ct.incline ? '' : ' one'}"><label>${esc(ct.speed.label)} (${esc(ct.speed.unit)})<input data-f="speed" type="text" inputmode="${ct.speed.pace ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(x.speed)}" placeholder="${esc(ct.speed.ph)}" aria-label="${esc(ct.speed.label)} en ${esc(ct.speed.unit)}"></label>${ct.incline ? `<label>Inclinación (%)<input data-f="incline" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.incline)}" placeholder="0" aria-label="Inclinación en porcentaje"></label>` : ''}</div>`;
+  const cardioFields = x => !cardio ? '' : `<div class="cardio-fields"><label>${esc(ct.speed.label)} (${esc(ct.speed.unit)})<input data-f="speed" type="text" inputmode="${ct.speed.pace ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(x.speed)}" placeholder="${esc(ct.speed.ph)}" aria-label="${esc(ct.speed.label)} en ${esc(ct.speed.unit)}"></label>${ct.incline ? `<label>Inclinación (%)<input data-f="incline" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.incline)}" placeholder="0" aria-label="Inclinación en porcentaje"></label>` : ''}<label>Distancia (${esc(ct.dist.unit)})<input data-f="distance" type="text" inputmode="decimal" autocomplete="off" value="${esc(x.distance)}" placeholder="${esc(ct.dist.ph)}" aria-label="Distancia en ${esc(ct.dist.unit)}"></label><label>Kcal de la máquina<input data-f="kcalMachine" type="text" inputmode="numeric" autocomplete="off" value="${esc(x.kcalMachine)}" placeholder="Opcional" aria-label="Calorías que marca la máquina"></label></div>`;
   const drawSets = () => { drawSetsBase(); drawKcal(); };
   const drawSetsBase = () => {
     let w = 0;

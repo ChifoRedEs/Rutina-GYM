@@ -34,12 +34,12 @@ window.GYM_DATA.GROUPS = {
 /* Máquinas de cardio: qué se registra en cada serie además del tiempo.
  * speed.pace = true → el ritmo se escribe como min:seg cada 500 m. incline = true → admite % de inclinación. */
 window.GYM_DATA.CARDIO_TYPES = {
-  "cinta":          { "label": "Cinta de correr",     "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 }, "incline": true },
-  "eliptica":       { "label": "Elíptica",            "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 } },
-  "bici-estatica":  { "label": "Bicicleta estática",  "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
-  "bici-reclinada": { "label": "Bicicleta reclinada", "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
-  "remo":           { "label": "Máquina de remo",     "speed": { "label": "Ritmo",     "unit": "min/500 m", "ph": "2:15", "pace": true } },
-  "escaleras":      { "label": "Máquina de escaleras","speed": { "label": "Pisos",     "unit": "pisos/min", "ph": "8",    "max": 30 } }
+  "cinta":          { "dist": { "unit": "km", "ph": "2" }, "label": "Cinta de correr",     "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 }, "incline": true },
+  "eliptica":       { "dist": { "unit": "km", "ph": "2" }, "label": "Elíptica",            "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "8",    "max": 30 } },
+  "bici-estatica":  { "dist": { "unit": "km", "ph": "8" }, "label": "Bicicleta estática",  "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
+  "bici-reclinada": { "dist": { "unit": "km", "ph": "8" }, "label": "Bicicleta reclinada", "speed": { "label": "Velocidad", "unit": "km/h",      "ph": "22",   "max": 60 } },
+  "remo":           { "dist": { "unit": "m", "ph": "2000" }, "label": "Máquina de remo",     "speed": { "label": "Ritmo",     "unit": "min/500 m", "ph": "2:15", "pace": true } },
+  "escaleras":      { "dist": { "unit": "pisos", "ph": "40" }, "label": "Máquina de escaleras","speed": { "label": "Pisos",     "unit": "pisos/min", "ph": "8",    "max": 30 } }
 };
 window.GYM_DATA.SUBGROUPS = {"empuje":["Pecho","Hombro","Tríceps"],"traccion":["Espalda","Trapecio","Deltoides posterior","Bíceps"],"pierna":["Cuádriceps","Glúteo y cadena posterior","Femoral","Gemelos","Aductores / Abductores"],"core":["Abdomen","Lumbar","Estabilidad","Pelvis / suelo pélvico"],"cardio":["Cardio"]};
 window.GYM_DATA.EQUIP = {"maquina":"Máquina","libre":"Peso libre","calistenia":"Peso corporal"};

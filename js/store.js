@@ -48,7 +48,9 @@ function normalizeSet(x, i) {
     targetDuration: Math.max(1, Number(x?.targetDuration) || 30),
     speed: x?.speed ?? '',
     incline: x?.incline ?? '',
-    doneAt: Math.max(0, Number(x?.doneAt) || 0)
+    doneAt: Math.max(0, Number(x?.doneAt) || 0),
+    distance: x?.distance ?? '',
+    kcalMachine: x?.kcalMachine ?? ''
   };
 }
 function normalizeSession(s) {

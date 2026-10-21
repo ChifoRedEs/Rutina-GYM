@@ -352,6 +352,5 @@ body:has(.rest-bar.show) .toast{bottom:calc(var(--nav-h) + env(safe-area-inset-b
 .fold[open]>summary{margin-bottom:8px}
 
 .cardio-fields{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
-.cardio-fields.one{grid-template-columns:1fr}
 .cardio-fields label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:650;color:var(--muted)}
 .cardio-fields input{padding:9px 6px}
