@@ -55,7 +55,7 @@ Los entrenamientos se guardan en el navegador, no en el repositorio. Si publicas
 - Cada ejercicio muestra sus kcal en cuanto marcas una serie (empieza el descanso); la cabecera de la sesión suma el total en vivo.
 - Al finalizar la sesión aparece una ventana con las kcal totales y el desglose por ejercicio.
 - Progreso → Calorías: semana, mes, media y mejor sesión, con gráfica por sesión, semana o mes. «Ejercicios» es desplegable.
-- **Pesas y calistenia:** no dependen del reloj. Cada serie suma 0,0215 kcal × carga (kg) × recorrido (m) × repeticiones × intensidad relativa (según repeticiones y RIR), más la recuperación del descanso configurado y, en modo «bruto», el metabolismo basal de la serie. El recorrido y el % de peso corporal tienen valores aproximados por ejercicio y se pueden ajustar en la ficha.
+- **Pesas, calistenia y core:** no dependen del reloj. Cada ejercicio tiene un MET según los músculos que mueve (piernas ≈ 7, pecho y espalda ≈ 6, hombro ≈ 5, aislamientos ≈ 3,6–4,5, gemelos ≈ 3,5, movilidad y suelo pélvico ≈ 1,5–2,5) que se ajusta por el RIR de cada serie (al fallo ×1,2; RIR 4 o más ×0,8) y se aplica a un tiempo teórico por serie (repeticiones × segundos por repetición + descanso de la ficha + 60 s de preparación). Cada ficha admite un MET propio.
 - **Cardio:** si escribes las kcal de la máquina se usan tal cual; si no, se calcula con la velocidad (o la que sale de la distancia) y la inclinación, durante el tiempo del bloque.
 - **Sesión:** la suma de sus ejercicios; la duración real no influye, así que esperar una máquina no suma gasto.
 - **Ajuste personal (%)** en Perfil para calibrar contra tu reloj.

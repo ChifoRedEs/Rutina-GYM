@@ -1,16 +1,17 @@
 /* Rutina Gym — estimación de calorías.
  *
- * PESAS Y CALISTENIA (no dependen del reloj, solo de lo que haces en cada serie):
- *   kcal de la serie = 0,0215 × carga (kg) × recorrido (m) × repeticiones × intensidad relativa
- *                      + recuperación del descanso configurado (+ metabolismo basal en modo «bruto»)
- *   · carga: el peso de la serie; en calistenia, tu peso × la fracción que mueves (+ lastre).
- *   · 0,0215 kcal por kg·m: trabajo mecánico (9,81 J/kg·m) con un rendimiento global del 12 % al subir
- *     (incluye estabilización, isométrico y glucólisis) y coste de frenado excéntrico (trabajo ÷ 1,2).
- *     Calibrado para que 10 reps con 60 kg en un press de pecho ≈ 4 MET medios, como el Compendio.
- *   · intensidad relativa: 0,85 + 0,3 × %1RM de la serie (Epley, con las reps y el RIR de la serie).
+ * PESAS, CALISTENIA Y CORE (no dependen del reloj, solo de lo que haces en cada serie):
+ *   kcal de la serie = MET del ejercicio × efecto del esfuerzo (RIR) × peso × tiempo teórico de la serie
+ *   · MET del ejercicio: depende de los músculos que mueve (piernas compuestas ≈ 7; pecho/espalda ≈ 6; hombro ≈ 5;
+ *     aislamientos ≈ 3,6-4,5 (cuádriceps y femoral más que bíceps o tríceps); gemelos y otros pequeños ≈ 3,5; core ≈ 3-4; movilidad y suelo pélvico ≈ 1,5-2,5).
+ *     Cada ficha puede fijar el suyo («MET propio»).
+ *   · esfuerzo: RIR 0 (al fallo) ×1,2 · RIR 2 ×1,0 · RIR 4 o más ×0,8; el calentamiento ×0,6.
+ *   · tiempo teórico de la serie: repeticiones × segundos por repetición + descanso de la ficha + 60 s de preparación
+ *     (colocarte, cambiar el peso o la máquina). Es un tiempo fijo por serie: esperar una máquina no suma gasto.
+ *   Calibrado para que 18 series mezcladas cerca del fallo den unos 400-450 kcal con 75 kg.
  * CARDIO: kcal de la máquina si las escribes; si no, MET según velocidad (derivada de la distancia si
  *   falta) e inclinación × tiempo del bloque (el cronómetro solo corre cuando lo pones en marcha).
- * EJERCICIOS POR TIEMPO (plancha…) y MET propio: método MET clásico (Compendio de Actividades Físicas).
+ * EJERCICIOS POR TIEMPO (plancha, suelo pélvico…): MET del ejercicio × tiempo real de las series (cronómetro) + descanso.
  * La suma de la sesión es la suma de sus ejercicios: no usa la duración real de la sesión.
  * Es una estimación: el error habitual ronda el ±20-30 %; «Ajuste personal» permite calibrarla.
  * Datos personales y ajustes se guardan en settings.body y settings.calc (solo en este dispositivo). */
@@ -176,59 +177,51 @@ function calCardioKcal(e, def, cfg, b) {
 /* Texto breve con el detalle de un resultado de calExerciseKcal. */
 const calDetailText = r => {
   if (r.method === 'machine') return 'kcal de la máquina';
-  if (r.method === 'mech') return `${r.sets} ${r.sets === 1 ? 'serie' : 'series'} · ${fmtNum(Math.round(r.volume))} kg·rep`;
+  if (r.method === 'strength') return `${r.sets} ${r.sets === 1 ? 'serie' : 'series'} · MET ${fmtNum(Math.round(r.met * 10) / 10)}`;
   const mins = `${r.minutes < 1 ? '<1' : Math.round(r.minutes)} min`;
-  return (r.level === 'custom' || r.level === 'speed') ? `${mins} · MET ${fmtNum(Math.round(r.met * 10) / 10)}` : `${mins} · intensidad ${CAL_LEVELS[r.level].toLowerCase()}`;
+  return (r.level === 'custom' || r.level === 'speed' || r.level === 'timed') ? `${mins} · MET ${fmtNum(Math.round(r.met * 10) / 10)}` : `${mins} · intensidad ${CAL_LEVELS[r.level].toLowerCase()}`;
 };
 
-/* ---------- Pesas y calistenia: trabajo mecánico × intensidad relativa ---------- */
-const CAL_KCAL_PER_KG_M = 0.0215;
-/* Recorrido del movimiento en metros: el de la ficha (cm) o una aproximación por tipo de ejercicio. */
-const CAL_ROM = [
-  [/talones|gemelo/i, 0.10], [/encogimiento/i, 0.12], [/plancha|plank/i, 0.10], [/superman|tronco|lumbar/i, 0.30], [/curl/i, 0.40], [/extensi[oó]n de cu[aá]driceps/i, 0.45],
-  [/sentadilla|prensa|hack|zancada|b[uú]lgara|goblet/i, 0.55], [/peso muerto|buenos d[ií]as|hiperextens|puente de gl[uú]teo|elevaci[oó]n de cadera/i, 0.45],
-  [/press militar|press de hombros|arnold/i, 0.50], [/elevaciones|p[aá]jaros|aperturas|cruces|face pull|pec deck/i, 0.50],
-  [/tr[ií]ceps|franc[eé]s/i, 0.40], [/press|flexion|fondos|dips/i, 0.45], [/jal[oó]n|dominada|chin|pull-?over/i, 0.60], [/remo/i, 0.45],
-  [/aductor|abductor/i, 0.35], [/crunch|abdominal|rotaci[oó]n|elevaci[oó]n de (rodillas|piernas)|rueda|pallof|mountain|dead bug|bird dog|superman|lumbar|tronco|carry/i, 0.30]
+/* ---------- Pesas, calistenia y core: MET propio de cada ejercicio × esfuerzo ---------- */
+const CAL_SET_PREP_S = 60;          // preparación fija por serie (colocarte, cambiar peso o máquina)
+const CAL_LEVEL_FACTOR = { light: 0.85, moderate: 1, vigorous: 1.15 };
+/* MET base (con RIR 2) según el tipo de ejercicio; la primera coincidencia manda. */
+const CAL_BASE_MET = [
+  [/respiraci[oó]n/i, 1.5], [/kegel/i, 1.8], [/retroversi[oó]n/i, 2.0], [/clamshell/i, 2.5], [/^puente de gl[uú]teos$/i, 3.0],
+  [/mountain/i, 6.0], [/carry/i, 4.5], [/plancha|plank|hollow|pallof|dead bug|bird dog/i, 3.2],
+  [/crunch|abdominal/i, 4.0], [/talones|gemelo|aductor|abductor|encogimiento|face pull|elevaciones en y/i, 3.5],
+  [/superman|tronco|lumbar|hiperextens|rotaci[oó]n|elevaci[oó]n de (rodillas|piernas)|rueda/i, 4.0],
+  [/extensi[oó]n de cu[aá]driceps/i, 4.5], [/curl femoral/i, 4.3], [/curl|tr[ií]ceps|franc[eé]s/i, 3.8], [/elevaciones|p[aá]jaros/i, 3.6],
+  [/aperturas|cruces|pec deck/i, 4.0], [/pull-?over/i, 4.2],
+  [/puente de gl[uú]teo|elevaci[oó]n de cadera/i, 5.5],
+  [/peso muerto|buenos d[ií]as|sentadilla|prensa|hack|zancada|b[uú]lgara|goblet/i, 7.0],
+  [/press militar|press de hombros|arnold/i, 5.0], [/press|flexion|fondos|dips|jal[oó]n|dominada|chin|remo/i, 6.0]
 ];
-const CAL_ROM_GROUP = { empuje: 0.45, traccion: 0.5, pierna: 0.5, core: 0.3, cardio: 0.3 };
-function calRom(def) {
-  const own = num(def?.rom); if (own !== null && own >= 3 && own <= 150) return own / 100;
-  const hit = CAL_ROM.find(([re]) => re.test(def?.name || ''));
-  return hit ? hit[1] : (CAL_ROM_GROUP[def?.group] ?? 0.45);
+const CAL_BASE_MET_GROUP = { empuje: 5.0, traccion: 5.0, pierna: 6.0, core: 3.5, cardio: 5.0 };
+/* MET base de un ejercicio: el de la ficha o el que corresponde a su tipo. */
+function calMetBase(def) {
+  const own = num(def?.met); if (own !== null && own >= 1 && own <= 15) return own;
+  const hit = CAL_BASE_MET.find(([re]) => re.test(def?.name || ''));
+  return hit ? hit[1] : (CAL_BASE_MET_GROUP[def?.group] ?? 4.5);
 }
-/* Fracción del peso corporal que se mueve en calistenia: la de la ficha (%) o una aproximación por ejercicio. */
-const CAL_BW = [
-  [/dominada|chin-?up|fondos|dips|talones/i, 1.0], [/flexion/i, 0.64], [/remo invertido/i, 0.6], [/colgado/i, 0.45],
-  [/mountain|deslizante|hiperextens/i, 0.5], [/crunch inverso|superman/i, 0.3], [/dead bug|bird dog/i, 0.15], [/banda/i, 0.1]
-];
-function calBwFraction(def) {
-  const own = num(def?.bw); if (own !== null && own >= 0 && own <= 150) return own / 100;
-  const hit = CAL_BW.find(([re]) => re.test(def?.name || ''));
-  return hit ? hit[1] : 0.5;
-}
-/* Mancuernas: el peso se anota por mancuerna, así que con dos a la vez la carga es el doble. */
-const calDumbbellFactor = def => (/mancuernas/i.test(def?.name || '') && !/una mano|unilateral|alterno|una pierna|\bo (barra|disco)|o mancuernas/i.test(def?.name || '')) ? 2 : 1;
-/* Intensidad relativa de una serie: 0,85 + 0,3 × %1RM (Epley con repeticiones + RIR). */
-function calSetIntensity(def, x) {
-  const rir = Math.min(6, Math.max(0, num(x.rir) ?? num(def?.targetRIR) ?? 2)), reps = num(x.reps) || 0;
-  return 0.85 + 0.3 / (1 + (reps + rir) / 30);
-}
+/* Efecto del esfuerzo: RIR 0 → ×1,2 · RIR 2 → ×1,0 · RIR 4 o más → ×0,8. */
+const calEffort = rir => Math.min(1.2, Math.max(0.8, 1.2 - 0.1 * rir));
 function calStrengthKcal(e, def, cfg, b) {
-  const done = (e.sets || []).filter(x => x.completed), rest = num(e.restSeconds) ?? num(def?.restSeconds) ?? 90;
-  if (!b.weight) return { kcal: null, sets: done.length, volume: 0, minutes: 0, met: null, level: 'mech', method: 'mech' };
-  const ref = calKcalPerMetKgH(b, cfg), rom = calRom(def), calis = def?.equip === 'calistenia', frac = calBwFraction(def), mult = calDumbbellFactor(def);
-  let active = 0, recovery = 0, baseline = 0, volume = 0;
+  const done = (e.sets || []).filter(x => x.completed), rest = num(e.restSeconds) ?? num(def?.restSeconds) ?? 90, base = calMetBase(def);
+  let kcal = 0, metSecs = 0, secs = 0;
   for (const x of done) {
-    const reps = num(x.reps) || 0, w = num(x.weight) || 0;   // en calistenia, un peso negativo es una ayuda (dominadas asistidas)
-    const load = Math.max(0, calis ? b.weight * frac + w : w * mult);
-    active += CAL_KCAL_PER_KG_M * load * rom * reps * calSetIntensity(def, x);
-    recovery += 0.5 * ref * b.weight * rest / 3600;                         // el descanso mantiene el metabolismo elevado
-    baseline += ref * b.weight * (reps * cfg.secPerRep + rest) / 3600;      // basal durante la serie y su descanso (solo modo bruto)
-    volume += load * reps;
+    const reps = num(x.reps) || 0, f = x.type === 'warmup' ? 0.6 : calEffort(num(x.rir) ?? num(def?.targetRIR) ?? 2);
+    const met = Math.max(1.2, base * f), t = reps * cfg.secPerRep + rest + CAL_SET_PREP_S;
+    if (b.weight) kcal += calKcal(met, t / 60, b, cfg);
+    metSecs += met * t; secs += t;
   }
-  const kcal = (cfg.mode === 'net' ? active + recovery : active + recovery + baseline) * (1 + (Number(cfg.epoc) || 0) / 100) * calScale(cfg);
-  return { kcal, sets: done.length, volume, minutes: 0, met: null, level: 'mech', method: 'mech' };
+  return { kcal: b.weight ? kcal : null, sets: done.length, minutes: secs / 60, met: secs ? metSecs / secs : base, level: 'strength', method: 'strength' };
+}
+/* MET de un ejercicio por tiempo: el del ejercicio, ajustado por la intensidad de la ficha o de Ajustes. */
+function calTimedMet(def, cfg) {
+  const own = num(def?.met); if (own !== null && own >= 1 && own <= 15) return own;
+  const lvl = CAL_LEVELS[def?.intensity] ? def.intensity : cfg.intensity.cardio;
+  return calMetBase(def) * (CAL_LEVEL_FACTOR[lvl] ?? 1);
 }
 
 /* Segundos de un ejercicio por tiempo o con MET propio: series hechas + el descanso que sigue a cada una. */
@@ -240,14 +233,13 @@ function calExerciseSeconds(e, def = exerciseById(e.id) || e, cfg = calConfig())
   const work = done.reduce((t, x) => t + (timed ? (Number(x.duration) || Number(x.targetDuration) || 0) : (num(x.reps) || 0) * cfg.secPerRep), 0);
   return work + done.length * rest;
 }
-/* Calorías de un ejercicio de una sesión: { kcal, method, minutes, met, level, sets, volume } (kcal = null si falta el peso). */
+/* Calorías de un ejercicio de una sesión: { kcal, method, minutes, met, level, sets } (kcal = null si falta el peso). */
 function calExerciseKcal(e, cfg = calConfig(), b = calBody()) {
   const def = exerciseById(e.id) || e;
   if (calIsCardio(def)) return calCardioKcal(e, def, cfg, b);
-  const own = num(def.met);
-  if (!calIsTimed(def) && !(own !== null && own >= 1 && own <= 15)) return calStrengthKcal(e, def, cfg, b);
-  const secs = calExerciseSeconds(e, def, cfg), m = calExerciseMet(def, e.sets, cfg);
-  return { kcal: b.weight ? calKcal(m.met, secs / 60, b, cfg) : null, minutes: secs / 60, met: m.met, level: m.level, method: 'met', sets: (e.sets || []).filter(x => x.completed).length, volume: 0 };
+  if (!calIsTimed(def)) return calStrengthKcal(e, def, cfg, b);
+  const secs = calExerciseSeconds(e, def, cfg), met = calTimedMet(def, cfg);
+  return { kcal: b.weight ? calKcal(met, secs / 60, b, cfg) : null, minutes: secs / 60, met, level: 'timed', method: 'timed', sets: (e.sets || []).filter(x => x.completed).length };
 }
 /* Calorías de una sesión: la suma de sus ejercicios. No usa la duración real, así que esperar una máquina no suma gasto. */
 function calSessionKcal(s, cfg = calConfig(), b = calBody()) {
@@ -256,14 +248,14 @@ function calSessionKcal(s, cfg = calConfig(), b = calBody()) {
   if (!b.weight) return { total: rows.some(r => r.kcal) ? rows.reduce((t, r) => t + (r.kcal || 0), 0) : null, rows, sets };
   return { total: rows.reduce((t, r) => t + (r.kcal || 0), 0), rows, sets };
 }
-/* Referencias para la vista previa de Perfil. */
+/* Referencias para la vista previa de Perfil: 3 series de 15 repeticiones a RIR 1 en tres ejercicios distintos y 20 min de cinta. */
 function calReference(b = calBody(), cfg = calConfig()) {
-  const bench = { id: 'ref', name: 'Press de pecho convergente en máquina', group: 'empuje', equip: 'maquina', restSeconds: 90, targetRIR: 2 };
+  const sets = [1, 2, 3].map(() => ({ completed: true, reps: '15', rir: '1', type: 'working' }));
+  const ex = (name, group) => ({ label: name, kcal: calStrengthKcal({ id: 'ref', sets }, { name, group, restSeconds: 90 }, cfg, b).kcal });
   const tread = { id: 'ref2', name: 'Cinta de Correr', group: 'cardio', cardio: 'cinta', tracking: 'time', equip: 'maquina' };
-  const set = { completed: true, weight: '60', reps: '10', rir: '2', type: 'working' };
   const run = { completed: true, speed: '8', incline: '0', duration: 1200, targetDuration: 1200 };
   return {
-    bench: calStrengthKcal({ id: 'ref', sets: [set] }, bench, cfg, b).kcal,
+    rows: [ex('Sentadilla con barra', 'pierna'), ex('Extensión de cuádriceps sentado', 'pierna'), ex('Curl de bíceps con barra', 'traccion'), ex('Elevación de talones de pie en máquina', 'pierna')],
     treadmill: calCardioKcal({ id: 'ref2', sets: [run] }, tread, cfg, b).kcal
   };
 }

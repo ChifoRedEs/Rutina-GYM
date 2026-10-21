@@ -333,7 +333,7 @@ function showSessionSummary(s) {
         </div>
         <div class="kcal-list">${rows.map(x => `<div class="kcal-row"><span>${esc(x.name)}<small class="muted">${esc(calDetailText(x))}</small></span><b>${fmtNum(Math.round(x.kcal))} kcal</b></div>`).join('')}
           <div class="kcal-row total"><span>Total de la sesión</span><b>${fmtNum(Math.round(r.total))} kcal</b></div></div>
-        <p class="small muted">Calculado a partir de lo que has hecho en cada serie (carga, repeticiones y recorrido) y de los datos de tu Perfil; no depende del tiempo que ha durado la sesión. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
+        <p class="small muted">Calculado con el tipo de cada ejercicio, el esfuerzo (RIR) de cada serie y los datos de tu Perfil; no depende del tiempo que ha durado la sesión. Es una aproximación: el error habitual ronda el ±20–30 %.</p>`;
     }
     const { root } = openSheet(`<div class="sheet-head"><h3>Sesión finalizada</h3><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
       ${content}<button type="button" class="btn ${b.weight ? 'primary' : ''} full" data-close style="margin-top:10px">Cerrar</button>`, { onClose: () => resolve() });
